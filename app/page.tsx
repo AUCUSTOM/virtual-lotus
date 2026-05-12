@@ -476,10 +476,11 @@ export default function Home() {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     supabase.auth.getSession().then((result: any) => {
-      const session = result?.data?.session;
-      setUser(session?.user ?? null);
-      if (session?.user) loadProfile(session.user.id);
-    });
+  const session = result?.data?.session;
+  console.log("🔐 getSession:", session?.user?.id ?? "NO USER");
+  setUser(session?.user ?? null);
+  if (session?.user) loadProfile(session.user.id);
+});
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
@@ -588,6 +589,7 @@ export default function Home() {
   }
 
 async function generateImage(watchedAd = false) {
+  console.log("🎨 click. user:", user, "isPremium:", isPremium, "watchedAd:", watchedAd);
     if (!imagePrompt.trim() || !chatChar || generatingImage) return;
     if (!user) { setShowPremium(true); return; }
     if (!isPremium && !watchedAd) { setShowAdModal(true); return; }
