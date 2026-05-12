@@ -3,19 +3,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useRef, useEffect } from "react";
 import { THEMES, type Theme } from "../lib/themes";
 import { getSupabase } from "../lib/supabase";
-const CHARACTERS = [
-  { id: "aurora", name: "Aurora", age: 26, tags: ["deep","poetic","mysterious"], avatar: "/avatars/Aurora_26.jpg", premium: false, gender: "f" },
-  { id: "mila",   name: "Mila",   age: 23, tags: ["fun","direct","flirty"],      avatar: "/avatars/Mila_23.jpg",   premium: false, gender: "f" },
-  { id: "sofia",  name: "Sofia",  age: 27, tags: ["romantic","caring","empathetic"], avatar: "/avatars/Sofia_27.jpg", premium: false, gender: "f" },
-  { id: "luca",   name: "Luca",   age: 28, tags: ["charismatic","warm","witty"], avatar: "/avatars/Luca_28.jpg",   premium: false, gender: "m" },
-  { id: "noah",   name: "Noah",   age: 30, tags: ["calm","wise","reliable"],     avatar: "/avatars/Noah_30.jpg",   premium: false, gender: "m" },
-  { id: "elena",  name: "Elena",  age: 29, tags: ["elegant","sharp","demanding"],avatar: "/avatars/Elena_29.jpg",  premium: true,  gender: "f" },
-  { id: "zara",   name: "Zara",   age: 24, tags: ["bold","honest","alternative"],avatar: "/avatars/Zara_24.jpg",   premium: true,  gender: "f" },
-  { id: "ren",    name: "Ren",    age: 25, tags: ["mysterious","minimal","sharp"],avatar: "/avatars/Ren_25.jpg",    premium: true,  gender: "m" },
-  { id: "alex",   name: "Alex",   age: 26, tags: ["creative","fluid","surprising"],avatar: "/avatars/Alex_26.jpg", premium: true,  gender: "nb" },
-  { id: "kai",    name: "Kai",    age: 25, tags: ["enigmatic","intelligent","rare"],avatar: "/avatars/Kai_25.jpg", premium: true,  gender: "nb" },
-];
-
+import { CHARACTERS, type Character } from "../lib/characters";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const TRANSLATIONS: Record<string, Record<string, any>> = {
   en: {
@@ -429,7 +417,7 @@ const MAX_PREMIUM_PREVIEW = 5;
 export default function Home() {
   const [theme, setTheme] = useState<Theme>("warm");
   const [filter, setFilter] = useState("all");
-  const [chatChar, setChatChar] = useState<typeof CHARACTERS[0] | null>(null);
+  const [chatChar, setChatChar] = useState<Character | null>(null);
   const [showPremium, setShowPremium] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
@@ -512,7 +500,7 @@ export default function Home() {
     return true;
   });
 
-  function openChat(char: typeof CHARACTERS[0]) {
+  function openChat(char: Character) {
     if (limitHit && !char.premium) { setShowPremium(true); return; }
     setChatChar(char);
     const greetings: Record<string, string> = { en: "Hey! I'm", pl: "Hej! Jestem", nl: "Hoi! Ik ben", de: "Hey! Ich bin", fr: "Salut! Je suis", es: "¡Hola! Soy", ja: "こんにちは！私は", ko: "안녕하세요! 저는", zh: "你好！我是", hi: "नमस्ते! मैं हूँ" };
