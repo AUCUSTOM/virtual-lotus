@@ -480,7 +480,15 @@ supabase.auth.getSession().then((result: any) => {
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
+const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        setUser(session?.user ?? null);
+        if (session?.user) loadProfile(session.user.id);
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setIsPremium(false);
+      }
+    });
       setUser(session?.user ?? null);
       if (session?.user) loadProfile(session.user.id);
       else setIsPremium(false);
