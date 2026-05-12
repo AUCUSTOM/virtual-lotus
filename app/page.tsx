@@ -498,11 +498,13 @@ export default function Home() {
   async function loadProfile(userId: string) {
     const { data } = await supabase
       .from("profiles")
-      .select("is_premium, premium_until")
+      .select("plan_id, is_premium, subscription_status")
       .eq("id", userId)
       .single();
     if (data) {
-      const active = data.is_premium && (!data.premium_until || new Date(data.premium_until) > new Date());
+      const active = data.plan_id === "pro_monthly" || 
+                     data.plan_id === "pro_yearly" || 
+                     data.is_premium === true;
       setIsPremium(active);
     }
   }
