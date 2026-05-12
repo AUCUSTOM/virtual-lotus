@@ -458,6 +458,7 @@ export default function Home() {
   const [generatingImage, setGeneratingImage] = useState(false);
   const [imagesLeft, setImagesLeft] = useState(5);
   const [showImageInput, setShowImageInput] = useState(false);
+  const [showAdModal, setShowAdModal] = useState(false);
   const [imagePrompt, setImagePrompt] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const t = THEMES[theme];
@@ -584,9 +585,10 @@ export default function Home() {
     }
   }
 
-  async function generateImage() {
+async function generateImage(watchedAd = false) {
     if (!imagePrompt.trim() || !chatChar || generatingImage) return;
-    if (!isPremium) { setShowPremium(true); return; }
+    if (!user) { setShowPremium(true); return; }
+    if (!isPremium && !watchedAd) { setShowAdModal(true); return; }
     setGeneratingImage(true);
     setShowImageInput(false);
     setMessages(m => [...m, { role: "user", text: imagePrompt }]);
@@ -596,7 +598,7 @@ export default function Home() {
       const res = await fetch("/api/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, characterId: chatChar.id, isPremium })
+        body: JSON.stringify({ prompt, characterId: chatChar.id, userId: user?.id, watchedAd })
       });
       const data = await res.json();
       if (data.error === "image_limit") {
@@ -755,13 +757,13 @@ export default function Home() {
               </div>
             )}
 
-            {showImageInput && isPremium && (
+            {showImageInput && user && (
               <div style={{ padding: "0.8rem 1.2rem", borderTop: "0.5px solid " + t.border, display: "flex", gap: "0.7rem", background: t.surface }}>
                 <input value={imagePrompt} onChange={e => setImagePrompt(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter") generateImage(); if (e.key === "Escape") setShowImageInput(false); }}
                   placeholder={T.describeImage} autoFocus
                   style={{ flex: 1, background: t.card, border: "0.5px solid " + t.border, color: t.text, borderRadius: 14, padding: "10px 14px", fontFamily: "DM Sans, sans-serif", fontSize: "0.86rem", outline: "none" }} />
-                <button onClick={generateImage} disabled={generatingImage}
+                <button onClick={() => generateImage()} disabled={generatingImage}
                   style={{ background: t.accent, border: "none", color: "#fff", padding: "0 16px", borderRadius: 12, cursor: "pointer", fontSize: "0.8rem", opacity: generatingImage ? 0.5 : 1, whiteSpace: "nowrap" }}>
                   {generatingImage ? T.generatingImage : "→"}
                 </button>
@@ -769,7 +771,7 @@ export default function Home() {
             )}
 
             <div style={{ padding: "0.9rem 1.2rem", borderTop: "0.5px solid " + t.border, display: "flex", gap: "0.7rem", alignItems: "flex-end" }}>
-              {isPremium && (
+              {user && (
                 <button onClick={() => setShowImageInput(!showImageInput)} title={T.generateImage}
                   style={{ background: showImageInput ? t.accent : t.surface, border: "0.5px solid " + t.border, color: showImageInput ? "#fff" : t.text2, width: 40, height: 40, borderRadius: 12, cursor: "pointer", fontSize: "1rem", flexShrink: 0 }}>
                   🎨

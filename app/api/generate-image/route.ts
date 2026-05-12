@@ -1,46 +1,57 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
-// Dzienny limit obrazów per IP dla premium
-const imageCount: Record<string, { count: number; resetAt: number }> = {};
-const MAX_IMAGES_PER_DAY = 5;
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
-// Styl każdej postaci dla DALL-E
 const characterStyles: Record<string, string> = {
-  aurora:  "dreamy, ethereal, cosmic, soft watercolor, nebula colors, mystical atmosphere, painterly",
-  mila:    "vibrant, fun, colorful, playful, bright and cheerful, modern illustration style",
-  sofia:   "warm, romantic, soft golden light, flowers, gentle pastel colors, intimate and cozy",
-  luca:    "Italian aesthetic, warm mediterranean light, rich colors, food and art, cinematic",
-  noah:    "calm, minimal, ocean and nature, soft blue tones, peaceful, serene landscape",
-  elena:   "elegant, high fashion, dramatic lighting, black and gold, refined and luxurious",
-  zara:    "edgy, urban, street art, dark with pops of color, alternative, grunge aesthetic",
-  ren:     "minimalist, dark, moonlight, shadows and silence, Japanese aesthetic, sparse",
-  alex:    "surreal, boundary-breaking, mixed media, unexpected combinations, avant-garde art",
-  kai:     "mysterious, deep space, fractals, intellectual, cosmic patterns, mind-bending",
+  aurora: "dreamy, ethereal, cosmic, soft watercolor, nebula colors, mystical atmosphere, painterly",
+  mila:   "vibrant, fun, colorful, playful, bright and cheerful, modern illustration style",
+  sofia:  "warm, romantic, soft golden light, flowers, gentle pastel colors, intimate and cozy",
+  luca:   "Italian aesthetic, warm mediterranean light, rich colors, food and art, cinematic",
+  noah:   "calm, minimal, ocean and nature, soft blue tones, peaceful, serene landscape",
+  elena:  "elegant, high fashion, dramatic lighting, black and gold, refined and luxurious",
+  zara:   "edgy, urban, street art, dark with pops of color, alternative, grunge aesthetic",
+  ren:    "minimalist, dark, moonlight, shadows and silence, Japanese aesthetic, sparse",
+  alex:   "surreal, boundary-breaking, mixed media, unexpected combinations, avant-garde art",
+  kai:    "mysterious, deep space, fractals, intellectual, cosmic patterns, mind-bending",
 };
 
 export async function POST(req: Request) {
   try {
-    const { prompt, characterId, isPremium } = await req.json();
+    const { prompt, characterId, userId, watchedAd } = await req.json();
 
-    if (!isPremium) {
-      return NextResponse.json({ error: "premium_required" }, { status: 403 });
+    if (!userId) {
+      return NextResponse.json({ error: "not_authenticated" }, { status: 401 });
     }
 
-    const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "local";
-    const now = Date.now();
-    const key = ip + ":images";
+    // Pobierz plan użytkownika
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("plan_id")
+      .eq("id", userId)
+      .single();
 
-    if (!imageCount[key] || now > imageCount[key].resetAt) {
-      imageCount[key] = { count: 0, resetAt: now + 24 * 60 * 60 * 1000 };
+    const planId = profile?.plan_id || "free";
+    const isFree = planId === "free";
+
+    // Free musi obejrzeć reklamę
+    if (isFree && !watchedAd) {
+      return NextResponse.json({ error: "ad_required" }, { status: 402 });
     }
 
-    if (imageCount[key].count >= MAX_IMAGES_PER_DAY) {
-      const hoursLeft = Math.ceil((imageCount[key].resetAt - now) / (1000 * 60 * 60));
+    // Sprawdź limit przez funkcję Supabase
+    const { data: limitData } = await supabase
+      .rpc("can_generate_image", { p_user_id: userId });
+
+    if (!limitData?.allowed) {
+      const hoursLeft = 24 - new Date().getHours();
       return NextResponse.json({ error: "image_limit", hoursLeft }, { status: 429 });
     }
 
-    imageCount[key].count++;
-
+    // Generuj obraz
     const style = characterStyles[characterId] || "artistic, beautiful, detailed";
     const fullPrompt = `${prompt}. Style: ${style}. No text, no words in image.`;
 
@@ -67,7 +78,21 @@ export async function POST(req: Request) {
     }
 
     const imageUrl = data.data[0].url;
-    const remaining = MAX_IMAGES_PER_DAY - imageCount[key].count;
+
+    // Inkrementuj licznik
+    await supabase.rpc("increment_image_usage", { p_user_id: userId });
+
+    // Zapisz w historii
+    await supabase.from("generated_images").insert({
+      user_id: userId,
+      character_id: characterId,
+      prompt,
+      image_url: imageUrl,
+      was_free: isFree,
+      cost_usd: 0.04,
+    });
+
+    const remaining = (limitData.remaining || 1) - 1;
 
     return NextResponse.json({ imageUrl, remaining });
 

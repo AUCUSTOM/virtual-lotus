@@ -6,34 +6,21 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 });
 
 const PLANS = {
-  monthly: { price: 999, name: "VirtualLotus Premium - Monthly" },
-  yearly:  { price: 7999, name: "VirtualLotus Premium - Yearly" },
+  monthly: process.env.STRIPE_PRICE_MONTHLY!,
+  yearly:  process.env.STRIPE_PRICE_YEARLY!,
 };
 
 export async function POST(req: Request) {
   try {
-    const { plan, successUrl, cancelUrl } = await req.json();
-
-    const selectedPlan = PLANS[plan as keyof typeof PLANS] || PLANS.monthly;
+    const { plan } = await req.json();
+    const priceId = PLANS[plan as keyof typeof PLANS] || PLANS.monthly;
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card", "ideal", "link"],
-      line_items: [
-        {
-          price_data: {
-            currency: "eur",
-            product_data: { name: selectedPlan.name },
-            unit_amount: selectedPlan.price,
-            recurring: {
-              interval: plan === "yearly" ? "year" : "month",
-            },
-          },
-          quantity: 1,
-        },
-      ],
+      line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
-      success_url: successUrl || `${req.headers.get("origin")}/success`,
-      cancel_url: cancelUrl || `${req.headers.get("origin")}/`,
+      success_url: `${req.headers.get("origin")}/?success=true`,
+      cancel_url:  `${req.headers.get("origin")}/`,
       automatic_tax: { enabled: true },
     });
 
