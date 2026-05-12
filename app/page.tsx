@@ -2,6 +2,7 @@
 export const dynamic = 'force-dynamic'
 import { useState, useRef, useEffect } from "react";
 import { getSupabase } from "../lib/supabase";
+
 const THEMES = {
   warm:   { bg: "#faf7f4", bg2: "#f5ede4", surface: "rgba(139,107,90,0.06)", border: "rgba(139,107,90,0.15)", text: "#2a2020", text2: "#9a8070", accent: "#8b6b5a", accent2: "#c4a882", glow: "rgba(196,168,130,0.2)", premium: "#a07850", card: "#fff" },
   dark:   { bg: "#0d0b09", bg2: "#141210", surface: "rgba(196,168,130,0.06)", border: "rgba(196,168,130,0.12)", text: "#f0ebe4", text2: "#8a7a6a", accent: "#c4a882", accent2: "#e0c9a8", glow: "rgba(196,168,130,0.15)", premium: "#c4a882", card: "#141210" },
@@ -453,8 +454,7 @@ export default function Home() {
   const [hoursLeft, setHoursLeft] = useState<number | null>(null);
   const [lang, setLang] = useState("en");
   const [isPremium, setIsPremium] = useState(false);
-const [user, setUser] = useState<{id: string} | null>(null);
-const supabase = getSupabase();
+  const [user, setUser] = useState<{ id: string } | null>(null);
   const [generatingImage, setGeneratingImage] = useState(false);
   const [imagesLeft, setImagesLeft] = useState(5);
   const [showImageInput, setShowImageInput] = useState(false);
@@ -462,6 +462,7 @@ const supabase = getSupabase();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const t = THEMES[theme];
   const T = TRANSLATIONS[lang] || TRANSLATIONS.en;
+  const supabase = getSupabase();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -473,14 +474,14 @@ const supabase = getSupabase();
     setLang(detectLang());
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-supabase.auth.getSession().then((result: any) => {
+    supabase.auth.getSession().then((result: any) => {
       const session = result?.data?.session;
       setUser(session?.user ?? null);
       if (session?.user) loadProfile(session.user.id);
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         setUser(session?.user ?? null);
         if (session?.user) loadProfile(session.user.id);
@@ -489,8 +490,8 @@ const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, 
         setIsPremium(false);
       }
     });
-      
-    });return () => subscription.unsubscribe();
+
+    return () => subscription.unsubscribe();
   }, []);
 
   async function loadProfile(userId: string) {
