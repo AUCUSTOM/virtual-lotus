@@ -489,12 +489,8 @@ const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, 
         setIsPremium(false);
       }
     });
-      setUser(session?.user ?? null);
-      if (session?.user) loadProfile(session.user.id);
-      else setIsPremium(false);
-    });
-
-    return () => subscription.unsubscribe();
+      
+    });return () => subscription.unsubscribe();
   }, []);
 
   async function loadProfile(userId: string) {
