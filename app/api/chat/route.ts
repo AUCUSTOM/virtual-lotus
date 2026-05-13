@@ -94,20 +94,15 @@ HOW YOU TALK:
 };
 
 async function checkIsPremium(userId: string | null): Promise<boolean> {
-  if (!userId) {
-    console.log("[checkIsPremium] no userId, returning false");
-    return false;
-  }
+  if (!userId) return false;
 
   try {
     const supabase = getSupabase();
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("profiles")
       .select("plan_id, is_premium")
       .eq("id", userId)
       .single();
-
-    console.log("[checkIsPremium] userId=" + userId + " data=" + JSON.stringify(data) + " error=" + JSON.stringify(error));
 
     if (!data) return false;
 
@@ -116,8 +111,7 @@ async function checkIsPremium(userId: string | null): Promise<boolean> {
       data.plan_id === "pro_yearly" ||
       data.is_premium === true
     );
-  } catch (e) {
-    console.log("[checkIsPremium] exception: " + String(e));
+  } catch {
     return false;
   }
 }
