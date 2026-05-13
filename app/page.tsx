@@ -6,6 +6,7 @@ import { getSupabase } from "../lib/supabase";
 import { CHARACTERS, type Character } from "../lib/characters";
 import { TRANSLATIONS } from "../lib/translations";
 import { useAuth } from "../hooks/useAuth";
+import { useChat } from "../hooks/useChat";
 function detectLang(): string {
   if (typeof navigator === "undefined") return "en";
   const lang = navigator.language?.toLowerCase() || "en";
@@ -26,34 +27,24 @@ const MAX_PREMIUM_PREVIEW = 5;
 export default function Home() {
   const [theme, setTheme] = useState<Theme>("warm");
   const [filter, setFilter] = useState("all");
-  const [chatChar, setChatChar] = useState<Character | null>(null);
-  const [showPremium, setShowPremium] = useState(false);
-  const [messages, setMessages] = useState<Msg[]>([]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+  
   const [paying, setPaying] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [msgCount, setMsgCount] = useState(0);
-  const [limitHit, setLimitHit] = useState(false);
-  const [hoursLeft, setHoursLeft] = useState<number | null>(null);
+  
   const [lang, setLang] = useState("en");
   
   const { user, isPremium, signOut } = useAuth();
-
+  const chat = useChat(lang);
   const [generatingImage, setGeneratingImage] = useState(false);
   const [imagesLeft, setImagesLeft] = useState(5);
   const [showImageInput, setShowImageInput] = useState(false);
   const [showAdModal, setShowAdModal] = useState(false);
   const [imagePrompt, setImagePrompt] = useState("");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
   const t = THEMES[theme];
   const T = TRANSLATIONS[lang] || TRANSLATIONS.en;
   const supabase = getSupabase();
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
-
+  
   useEffect(() => {
     const saved = localStorage.getItem("vl-theme") as Theme;
     if (saved && THEMES[saved]) setTheme(saved);
@@ -67,20 +58,6 @@ export default function Home() {
     if (filter === "f") return c.gender === "f";
     return true;
   });
-
-  function openChat(char: Character) {
-    if (limitHit && !char.premium) { setShowPremium(true); return; }
-    setChatChar(char);
-    const greetings: Record<string, string> = { en: "Hey! I'm", pl: "Hej! Jestem", nl: "Hoi! Ik ben", de: "Hey! Ich bin", fr: "Salut! Je suis", es: "¡Hola! Soy", ja: "こんにちは！私は", ko: "안녕하세요! 저는", zh: "你好！我是", hi: "नमस्ते! मैं हूँ" };
-    const g = greetings[lang] || greetings.en;
-    setMessages([{ role: "ai", text: g + " " + char.name + "." }]);
-    setSessionId(null);
-    setMsgCount(0);
-    setLimitHit(false);
-    setInput("");
-    setShowImageInput(false);
-    setImagePrompt("");
-  }
 
   async function startCheckout(plan: "monthly" | "yearly") {
     setPaying(true);
@@ -100,71 +77,40 @@ export default function Home() {
     }
   }
 
-  async function sendMessage() {
-    if (!input.trim() || !chatChar || loading) return;
-    const maxForChar = chatChar.premium ? MAX_PREMIUM_PREVIEW : MAX_FREE;
-    if (msgCount >= maxForChar) { setLimitHit(true); setShowPremium(true); return; }
-    const text = input.trim();
-    setInput("");
-    setMessages(m => [...m, { role: "user", text }]);
-    setLoading(true);
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, characterId: chatChar.id, sessionId })
-      });
-      const data = await res.json();
-      if (data.error === "daily_limit") {
-        setLimitHit(true);
-        setHoursLeft(data.hoursLeft ?? null);
-        setShowPremium(true);
-        return;
-      }
-      setSessionId(data.sessionId);
-      setMsgCount(n => n + 1);
-      setMessages(m => [...m, { role: "ai", text: data.reply }]);
-    } catch {
-      setMessages(m => [...m, { role: "ai", text: "Something went wrong... try again." }]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-async function generateImage(watchedAd = false) {
+  async function generateImage(watchedAd = false) {
   console.log("🎨 click. user:", user, "isPremium:", isPremium, "watchedAd:", watchedAd);
-    if (!imagePrompt.trim() || !chatChar || generatingImage) return;
-    if (!user) { setShowPremium(true); return; }
+    if (!imagePrompt.trim() || !chat.chatChar || generatingImage) return;
+    if (!user) { chat.setShowPremium(true); return; }
     if (!isPremium && !watchedAd) { setShowAdModal(true); return; }
     setGeneratingImage(true);
     setShowImageInput(false);
-    setMessages(m => [...m, { role: "user", text: imagePrompt }]);
+    chat.setMessages(m => [...m, { role: "user", text: imagePrompt }]);
     const prompt = imagePrompt;
     setImagePrompt("");
     try {
       const res = await fetch("/api/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, characterId: chatChar.id, userId: user?.id, watchedAd })
+        body: JSON.stringify({ prompt, characterId: chat.chatChar.id, userId: user?.id, watchedAd })
       });
       const data = await res.json();
       if (data.error === "image_limit") {
-        setMessages(m => [...m, { role: "ai", text: T.imageLimitHit(data.hoursLeft) }]);
+        chat.setMessages(m => [...m, { role: "ai", text: T.imagechat.limitHit(data.chat.hoursLeft) }]);
       } else if (data.imageUrl) {
         setImagesLeft(data.remaining);
-        setMessages(m => [...m, { role: "ai", imageUrl: data.imageUrl }]);
+        chat.setMessages(m => [...m, { role: "ai", imageUrl: data.imageUrl }]);
       } else {
-        setMessages(m => [...m, { role: "ai", text: T.imageError }]);
+        chat.setMessages(m => [...m, { role: "ai", text: T.imageError }]);
       }
     } catch {
-      setMessages(m => [...m, { role: "ai", text: T.imageError }]);
+      chat.setMessages(m => [...m, { role: "ai", text: T.imageError }]);
     } finally {
       setGeneratingImage(false);
     }
   }
 
-  const maxForCurrent = chatChar?.premium ? MAX_PREMIUM_PREVIEW : MAX_FREE;
-  const remaining = maxForCurrent - msgCount;
+  const maxForCurrent = chat.chatChar?.premium ? MAX_PREMIUM_PREVIEW : MAX_FREE;
+  const remaining = maxForCurrent - chat.msgCount;
   const themeColors: Record<Theme, string> = { warm: "#e8d5c0", dark: "#2a2420", rose: "#f0d0da", sage: "#c8dcc8", dusk: "#2a2040" };
   const isDark = theme === "dark" || theme === "dusk";
 
@@ -194,7 +140,7 @@ async function generateImage(watchedAd = false) {
               {T.signIn}
             </button>
           )}
-          <button onClick={() => setShowPremium(true)}
+          <button onClick={() => chat.setShowPremium(true)}
             style={{ background: "linear-gradient(135deg, " + t.accent2 + ", " + t.premium + ")", color: isDark ? "#1a1000" : "#fff", border: "none", padding: "7px 16px", borderRadius: 20, fontFamily: "DM Sans, sans-serif", fontSize: "0.78rem", fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
             ✦ Premium
           </button>
@@ -231,7 +177,7 @@ async function generateImage(watchedAd = false) {
         {filtered.map(char => {
           const charT = T.chars?.[char.id] || { tagline: "", desc: "" };
           return (
-            <div key={char.id} onClick={() => openChat(char)}
+            <div key={char.id} onClick={() => chat.openChat(char)}
               style={{ background: t.card, border: "0.5px solid " + t.border, borderRadius: 20, padding: "1.6rem", cursor: "pointer", position: "relative", transition: "all 0.25s" }}
               onMouseEnter={e => { const el = e.currentTarget as HTMLDivElement; el.style.borderColor = t.accent; el.style.transform = "translateY(-4px)"; el.style.boxShadow = "0 12px 32px " + t.glow; }}
               onMouseLeave={e => { const el = e.currentTarget as HTMLDivElement; el.style.borderColor = t.border; el.style.transform = "none"; el.style.boxShadow = "none"; }}>
@@ -258,23 +204,23 @@ async function generateImage(watchedAd = false) {
         })}
       </div>
 
-      {chatChar && (
-        <div onClick={e => { if (e.target === e.currentTarget) setChatChar(null); }}
+      {chat.chatChar && (
+        <div onClick={e => { if (e.target === e.currentTarget) chat.setChatChar(null); }}
           style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(12px)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: "env(safe-area-inset-bottom)" }}>
           <div style={{ background: t.bg2, border: "0.5px solid " + t.border, borderRadius: "24px 24px 0 0", width: "100%", maxWidth: 540, height: "88dvh", maxHeight: 680, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <div style={{ padding: "1.2rem 1.5rem", borderBottom: "0.5px solid " + t.border, display: "flex", alignItems: "center", gap: "1rem" }}>
               <div style={{ width: 46, height: 46, borderRadius: "50%", background: t.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", overflow: "hidden" }}>
-                {chatChar.avatar.startsWith("/") ? <img src={chatChar.avatar} alt={chatChar.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} /> : chatChar.avatar}
+                {chat.chatChar.avatar.startsWith("/") ? <img src={chat.chatChar.avatar} alt={chat.chatChar.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} /> : chat.chatChar.avatar}
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "1.2rem" }}>{chatChar.name}</div>
+                <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "1.2rem" }}>{chat.chatChar.name}</div>
                 <div style={{ fontSize: "0.72rem", color: t.accent }}>{T.online}</div>
               </div>
-              <button onClick={() => setChatChar(null)} style={{ background: t.surface, border: "0.5px solid " + t.border, color: t.text2, width: 34, height: 34, borderRadius: "50%", cursor: "pointer", fontSize: "0.9rem" }}>✕</button>
+              <button onClick={() => chat.setChatChar(null)} style={{ background: t.surface, border: "0.5px solid " + t.border, color: t.text2, width: 34, height: 34, borderRadius: "50%", cursor: "pointer", fontSize: "0.9rem" }}>✕</button>
             </div>
 
             <div style={{ flex: 1, overflowY: "auto", padding: "1.2rem", display: "flex", flexDirection: "column", gap: "0.8rem" }}>
-              {messages.map((msg, i) => (
+              {chat.messages.map((msg, i) => (
                 <div key={i} style={{ maxWidth: "80%", alignSelf: msg.role === "ai" ? "flex-start" : "flex-end" }}>
                   {msg.imageUrl ? (
                     <img src={msg.imageUrl} alt="generated" style={{ width: "100%", borderRadius: 16, border: "0.5px solid " + t.border, display: "block" }} />
@@ -285,22 +231,22 @@ async function generateImage(watchedAd = false) {
                   )}
                 </div>
               ))}
-              {(loading || generatingImage) && (
+              {(chat.loading || generatingImage) && (
                 <div style={{ display: "flex", gap: 4, padding: "0.75rem 1rem", background: t.card, border: "0.5px solid " + t.border, borderRadius: "16px 16px 16px 4px", alignSelf: "flex-start" }}>
                   {[0, 0.2, 0.4].map((d, i) => <div key={i} style={{ width: 6, height: 6, background: t.text2, borderRadius: "50%", animation: "bounce 1.2s " + d + "s infinite" }} />)}
                 </div>
               )}
-              {limitHit && (
+              {chat.limitHit && (
                 <div style={{ textAlign: "center", background: "rgba(196,168,130,0.1)", border: "0.5px solid " + t.accent2, borderRadius: 12, padding: "1rem", fontSize: "0.8rem", color: t.premium }}>
-                  ✦ {hoursLeft ? (chatChar.premium ? T.limitPremium(hoursLeft) : T.limitFree(hoursLeft)) : T.limitFree(24)}
+                  ✦ {chat.hoursLeft ? (chat.chatChar.premium ? T.limitPremium(chat.hoursLeft) : T.limitFree(chat.hoursLeft)) : T.limitFree(24)}
                 </div>
               )}
-              <div ref={messagesEndRef} />
+              <div ref={chat.messagesEndRef} />
             </div>
 
-            {remaining <= 3 && !limitHit && (
+            {remaining <= 3 && !chat.limitHit && (
               <div style={{ textAlign: "center", fontSize: "0.72rem", color: remaining <= 1 ? t.premium : t.text2, padding: "0 1.2rem 0.4rem" }}>
-                {T.remaining(remaining)} · <span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => setShowPremium(true)}>{T.goPremium}</span>
+                {T.remaining(remaining)} · <span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => chat.setShowPremium(true)}>{T.goPremium}</span>
               </div>
             )}
 
@@ -324,12 +270,12 @@ async function generateImage(watchedAd = false) {
                   🎨
                 </button>
               )}
-              <textarea value={input} onChange={e => setInput(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }}}
+              <textarea value={chat.input} onChange={e => chat.setInput(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); chat.sendMessage(); }}}
                 placeholder={T.write} rows={1}
                 style={{ flex: 1, background: t.surface, border: "0.5px solid " + t.border, color: t.text, borderRadius: 14, padding: "10px 14px", fontFamily: "DM Sans, sans-serif", fontSize: "0.86rem", resize: "none", outline: "none" }} />
-              <button onClick={sendMessage} disabled={loading || limitHit}
-                style={{ background: t.accent, border: "none", color: "#fff", width: 40, height: 40, borderRadius: 12, cursor: "pointer", fontSize: "0.9rem", opacity: loading || limitHit ? 0.4 : 1 }}>➤</button>
+              <button onClick={chat.sendMessage} disabled={chat.loading || chat.limitHit}
+                style={{ background: t.accent, border: "none", color: "#fff", width: 40, height: 40, borderRadius: 12, cursor: "pointer", fontSize: "0.9rem", opacity: chat.loading || chat.limitHit ? 0.4 : 1 }}>➤</button>
             </div>
 
             {isPremium && (
@@ -341,16 +287,16 @@ async function generateImage(watchedAd = false) {
         </div>
       )}
 
-      {showPremium && (
-        <div onClick={e => { if (e.target === e.currentTarget) setShowPremium(false); }}
+      {chat.showPremium && (
+        <div onClick={e => { if (e.target === e.currentTarget) chat.setShowPremium(false); }}
           style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(12px)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: "env(safe-area-inset-bottom)" }}>
           <div style={{ background: t.bg2, border: "0.5px solid " + t.accent2, borderRadius: "24px 24px 0 0", width: "100%", maxWidth: 480, padding: "2rem 2rem 1.6rem", textAlign: "center", maxHeight: "90dvh", overflowY: "auto" }}>
             <div style={{ width: 36, height: 4, background: t.border, borderRadius: 2, margin: "0 auto 1.4rem" }} />
             <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "1.8rem", fontWeight: 300, color: t.accent, marginBottom: "0.4rem" }}>{T.premiumTitle}</div>
             <p style={{ color: t.text2, fontSize: "0.86rem", lineHeight: 1.7, marginBottom: "1.4rem" }}>{T.premiumDesc}</p>
-            {limitHit && hoursLeft && (
+            {chat.limitHit && chat.hoursLeft && (
               <div style={{ background: t.surface, border: "0.5px solid " + t.border, borderRadius: 12, padding: "0.8rem", fontSize: "0.8rem", color: t.text2, marginBottom: "1.2rem" }}>
-                ⏳ {T.premiumRefresh(hoursLeft)}
+                ⏳ {T.premiumRefresh(chat.hoursLeft)}
               </div>
             )}
             <ul style={{ textAlign: "left", listStyle: "none", marginBottom: "1.8rem" }}>
@@ -369,7 +315,7 @@ async function generateImage(watchedAd = false) {
               {paying ? "Loading..." : T.yearly}
             </button>
             <div style={{ fontSize: "0.7rem", color: t.text2, marginBottom: "1rem" }}>{T.payments}</div>
-            <button onClick={() => setShowPremium(false)}
+            <button onClick={() => chat.setShowPremium(false)}
               style={{ background: "transparent", border: "none", color: t.text2, cursor: "pointer", fontFamily: "DM Sans, sans-serif", fontSize: "0.8rem", textDecoration: "underline" }}>
               {T.maybeLater}
             </button>
