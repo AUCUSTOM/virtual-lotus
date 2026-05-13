@@ -38,7 +38,7 @@ export default function Home() {
   const [lang, setLang] = useState("en");
   
   const { user, isPremium, signOut } = useAuth();
-  const chat = useChat(lang);
+  const chat = useChat(lang, user?.id ?? null);
   const t = THEMES[theme];
   const T = TRANSLATIONS[lang] || TRANSLATIONS.en;
   const supabase = getSupabase();

@@ -4,7 +4,7 @@ import type { Character } from "../lib/characters";
 const MAX_FREE = 15;
 const MAX_PREMIUM_PREVIEW = 5;
 type Message = { role: "user" | "ai"; text?: string; imageUrl?: string };
-export function useChat(lang: string) {
+export function useChat(lang: string, userId: string | null) {
   const [chatChar, setChatChar] = useState<Character | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -59,7 +59,7 @@ async function sendMessage() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, characterId: chatChar.id, sessionId }),
+        body: JSON.stringify({ message: text, characterId: chatChar.id, sessionId, userId }),
       });
       const data = await res.json();
       if (data.error === "daily_limit") {
