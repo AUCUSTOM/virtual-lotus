@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import { getSupabase } from "../../../lib/supabase";
+
+const MODEL_FREE = "claude-haiku-4-5";
+const MODEL_PREMIUM = "claude-sonnet-4-5";
 
 const sessions: Record<string, { role: string; content: string }[]> = {};
 const dailyCount: Record<string, { count: number; resetAt: number }> = {};
@@ -89,9 +93,32 @@ HOW YOU TALK:
 - Always reply in the same language the user writes in.` },
 };
 
+async function checkIsPremium(userId: string | null): Promise<boolean> {
+  if (!userId) return false;
+
+  try {
+    const supabase = getSupabase();
+    const { data } = await supabase
+      .from("profiles")
+      .select("plan_id, is_premium")
+      .eq("id", userId)
+      .single();
+
+    if (!data) return false;
+
+    return (
+      data.plan_id === "pro_monthly" ||
+      data.plan_id === "pro_yearly" ||
+      data.is_premium === true
+    );
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(req: Request) {
   try {
-    const { message, characterId, sessionId } = await req.json();
+    const { message, characterId, sessionId, userId } = await req.json();
 
     const char = characters[characterId];
     if (!char) return NextResponse.json({ error: "Character not found" }, { status: 404 });
@@ -127,6 +154,9 @@ export async function POST(req: Request) {
     sessions[sid].push({ role: "user", content: message });
     const history = sessions[sid].slice(-20);
 
+    const isPremium = await checkIsPremium(userId);
+    const model = isPremium ? MODEL_PREMIUM : MODEL_FREE;
+
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -135,7 +165,7 @@ export async function POST(req: Request) {
         "anthropic-version": "2023-06-01"
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-5",
+        model: model,
         max_tokens: 200,
         system: char.systemPrompt,
         messages: history
