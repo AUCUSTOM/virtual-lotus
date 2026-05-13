@@ -7,6 +7,7 @@ import { CHARACTERS, type Character } from "../lib/characters";
 import { TRANSLATIONS } from "../lib/translations";
 import { useAuth } from "../hooks/useAuth";
 import { useChat } from "../hooks/useChat";
+import { useImageGeneration } from "../hooks/useImageGeneration";
 function detectLang(): string {
   if (typeof navigator === "undefined") return "en";
   const lang = navigator.language?.toLowerCase() || "en";
@@ -34,15 +35,10 @@ export default function Home() {
   
   const { user, isPremium, signOut } = useAuth();
   const chat = useChat(lang);
-  const [generatingImage, setGeneratingImage] = useState(false);
-  const [imagesLeft, setImagesLeft] = useState(5);
-  const [showImageInput, setShowImageInput] = useState(false);
-  const [showAdModal, setShowAdModal] = useState(false);
-  const [imagePrompt, setImagePrompt] = useState("");
-  
   const t = THEMES[theme];
   const T = TRANSLATIONS[lang] || TRANSLATIONS.en;
   const supabase = getSupabase();
+  const img = useImageGeneration({ user, isPremium, chat, T });
 
   
   useEffect(() => {
@@ -74,38 +70,6 @@ export default function Home() {
       alert("Payment error. Please try again.");
     } finally {
       setPaying(false);
-    }
-  }
-
-  async function generateImage(watchedAd = false) {
-  console.log("🎨 click. user:", user, "isPremium:", isPremium, "watchedAd:", watchedAd);
-    if (!imagePrompt.trim() || !chat.chatChar || generatingImage) return;
-    if (!user) { chat.setShowPremium(true); return; }
-    if (!isPremium && !watchedAd) { setShowAdModal(true); return; }
-    setGeneratingImage(true);
-    setShowImageInput(false);
-    chat.setMessages(m => [...m, { role: "user", text: imagePrompt }]);
-    const prompt = imagePrompt;
-    setImagePrompt("");
-    try {
-      const res = await fetch("/api/generate-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, characterId: chat.chatChar.id, userId: user?.id, watchedAd })
-      });
-      const data = await res.json();
-      if (data.error === "image_limit") {
-        chat.setMessages(m => [...m, { role: "ai", text: T.imagechat.limitHit(data.chat.hoursLeft) }]);
-      } else if (data.imageUrl) {
-        setImagesLeft(data.remaining);
-        chat.setMessages(m => [...m, { role: "ai", imageUrl: data.imageUrl }]);
-      } else {
-        chat.setMessages(m => [...m, { role: "ai", text: T.imageError }]);
-      }
-    } catch {
-      chat.setMessages(m => [...m, { role: "ai", text: T.imageError }]);
-    } finally {
-      setGeneratingImage(false);
     }
   }
 
@@ -231,7 +195,7 @@ export default function Home() {
                   )}
                 </div>
               ))}
-              {(chat.loading || generatingImage) && (
+              {(chat.loading || img.generatingImage) && (
                 <div style={{ display: "flex", gap: 4, padding: "0.75rem 1rem", background: t.card, border: "0.5px solid " + t.border, borderRadius: "16px 16px 16px 4px", alignSelf: "flex-start" }}>
                   {[0, 0.2, 0.4].map((d, i) => <div key={i} style={{ width: 6, height: 6, background: t.text2, borderRadius: "50%", animation: "bounce 1.2s " + d + "s infinite" }} />)}
                 </div>
@@ -250,23 +214,23 @@ export default function Home() {
               </div>
             )}
 
-            {showImageInput && user && (
+            {img.showImageInput && user && (
               <div style={{ padding: "0.8rem 1.2rem", borderTop: "0.5px solid " + t.border, display: "flex", gap: "0.7rem", background: t.surface }}>
-                <input value={imagePrompt} onChange={e => setImagePrompt(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter") generateImage(); if (e.key === "Escape") setShowImageInput(false); }}
+                <input value={img.imagePrompt} onChange={e => img.setImagePrompt(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") img.generateImage(); if (e.key === "Escape") img.setShowImageInput(false); }}
                   placeholder={T.describeImage} autoFocus
                   style={{ flex: 1, background: t.card, border: "0.5px solid " + t.border, color: t.text, borderRadius: 14, padding: "10px 14px", fontFamily: "DM Sans, sans-serif", fontSize: "0.86rem", outline: "none" }} />
-                <button onClick={() => generateImage()} disabled={generatingImage}
-                  style={{ background: t.accent, border: "none", color: "#fff", padding: "0 16px", borderRadius: 12, cursor: "pointer", fontSize: "0.8rem", opacity: generatingImage ? 0.5 : 1, whiteSpace: "nowrap" }}>
-                  {generatingImage ? T.generatingImage : "→"}
+                <button onClick={() => img.generateImage()} disabled={img.generatingImage}
+                  style={{ background: t.accent, border: "none", color: "#fff", padding: "0 16px", borderRadius: 12, cursor: "pointer", fontSize: "0.8rem", opacity: img.generatingImage ? 0.5 : 1, whiteSpace: "nowrap" }}>
+                  {img.generatingImage ? T.img.generatingImage : "→"}
                 </button>
               </div>
             )}
 
             <div style={{ padding: "0.9rem 1.2rem", borderTop: "0.5px solid " + t.border, display: "flex", gap: "0.7rem", alignItems: "flex-end" }}>
               {user && (
-                <button onClick={() => setShowImageInput(!showImageInput)} title={T.generateImage}
-                  style={{ background: showImageInput ? t.accent : t.surface, border: "0.5px solid " + t.border, color: showImageInput ? "#fff" : t.text2, width: 40, height: 40, borderRadius: 12, cursor: "pointer", fontSize: "1rem", flexShrink: 0 }}>
+                <button onClick={() => img.setShowImageInput(!img.showImageInput)} title={T.img.generateImage}
+                  style={{ background: img.showImageInput ? t.accent : t.surface, border: "0.5px solid " + t.border, color: img.showImageInput ? "#fff" : t.text2, width: 40, height: 40, borderRadius: 12, cursor: "pointer", fontSize: "1rem", flexShrink: 0 }}>
                   🎨
                 </button>
               )}
@@ -280,7 +244,7 @@ export default function Home() {
 
             {isPremium && (
               <div style={{ textAlign: "center", fontSize: "0.68rem", color: t.text2, padding: "0 1.2rem 0.6rem" }}>
-                🎨 {T.imagesLeft(imagesLeft)}
+                🎨 {T.img.imagesLeft(img.imagesLeft)}
               </div>
             )}
           </div>
