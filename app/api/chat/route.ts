@@ -156,6 +156,7 @@ export async function POST(req: Request) {
 
     const isPremium = await checkIsPremium(userId);
     const model = isPremium ? MODEL_PREMIUM : MODEL_FREE;
+    console.log(`[chat] userId=${userId ?? "guest"} isPremium=${isPremium} model=${model}`);
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
