@@ -10,6 +10,7 @@ import { useChat } from "../hooks/useChat";
 import { useImageGeneration } from "../hooks/useImageGeneration";
 import { PremiumModal } from "../components/PremiumModal";
 import { CharacterCard } from "../components/CharacterCard";
+import { Header } from "../components/Header";
 function detectLang(): string {
   if (typeof navigator === "undefined") return "en";
   const lang = navigator.language?.toLowerCase() || "en";
@@ -77,41 +78,23 @@ export default function Home() {
 
   const maxForCurrent = chat.chatChar?.premium ? MAX_PREMIUM_PREVIEW : MAX_FREE;
   const remaining = maxForCurrent - chat.msgCount;
-  const themeColors: Record<Theme, string> = { warm: "#e8d5c0", dark: "#2a2420", rose: "#f0d0da", sage: "#c8dcc8", dusk: "#2a2040" };
+  
   const isDark = theme === "dark" || theme === "dusk";
 
   return (
     <div style={{ background: t.bg, color: t.text, minHeight: "100vh", fontFamily: "'DM Sans', sans-serif", transition: "background 0.4s, color 0.4s" }}>
       <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 
-      <header style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, background: t.bg + "f0", backdropFilter: "blur(24px)", borderBottom: "0.5px solid " + t.border, height: "auto", minHeight: 60, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem", paddingTop: "max(8px, env(safe-area-inset-top))", paddingBottom: "8px", paddingLeft: "max(1rem, env(safe-area-inset-left))", paddingRight: "max(1rem, env(safe-area-inset-right))" }}>
-        <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "1.4rem", fontWeight: 300, letterSpacing: "0.12em", color: t.accent, flexShrink: 0 }}>
-          Virtual<span style={{ fontStyle: "italic", color: t.text2 }}>Lotus</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexShrink: 0 }}>
-          <div style={{ display: "flex", gap: 6, background: t.surface, border: "0.5px solid " + t.border, borderRadius: 24, padding: "5px 8px" }}>
-            {(Object.keys(THEMES) as Theme[]).map(th => (
-              <button key={th} onClick={() => { setTheme(th); localStorage.setItem("vl-theme", th); }} title={th}
-                style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid " + (theme === th ? t.accent : "transparent"), cursor: "pointer", background: themeColors[th], transition: "all 0.2s", outline: "none" }} />
-            ))}
-          </div>
-          {user ? (
-            <button onClick={signOut}
-              style={{ background: "transparent", border: "0.5px solid " + t.border, color: t.text2, padding: "7px 14px", borderRadius: 20, fontFamily: "DM Sans, sans-serif", fontSize: "0.78rem", cursor: "pointer", whiteSpace: "nowrap" }}>
-              {T.signOut}
-            </button>
-          ) : (
-            <button onClick={() => window.location.href = "/auth"}
-              style={{ background: "transparent", border: "0.5px solid " + t.border, color: t.text2, padding: "7px 14px", borderRadius: 20, fontFamily: "DM Sans, sans-serif", fontSize: "0.78rem", cursor: "pointer", whiteSpace: "nowrap" }}>
-              {T.signIn}
-            </button>
-          )}
-          <button onClick={() => chat.setShowPremium(true)}
-            style={{ background: "linear-gradient(135deg, " + t.accent2 + ", " + t.premium + ")", color: isDark ? "#1a1000" : "#fff", border: "none", padding: "7px 16px", borderRadius: 20, fontFamily: "DM Sans, sans-serif", fontSize: "0.78rem", fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
-            ✦ Premium
-          </button>
-        </div>
-      </header>
+      <Header
+        t={t}
+        T={T}
+        theme={theme}
+        setTheme={setTheme}
+        isDark={isDark}
+        user={user}
+        signOut={signOut}
+        onPremiumClick={() => chat.setShowPremium(true)}
+      />
 
       <section style={{ paddingTop: 110, paddingBottom: 48, textAlign: "center", background: "linear-gradient(180deg, " + t.bg + " 0%, " + t.bg2 + " 100%)", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 500, height: 500, background: "radial-gradient(circle, " + t.glow + " 0%, transparent 70%)", pointerEvents: "none" }} />
