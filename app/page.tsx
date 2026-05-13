@@ -9,6 +9,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useChat } from "../hooks/useChat";
 import { useImageGeneration } from "../hooks/useImageGeneration";
 import { PremiumModal } from "../components/PremiumModal";
+import { CharacterCard } from "../components/CharacterCard";
 function detectLang(): string {
   if (typeof navigator === "undefined") return "en";
   const lang = navigator.language?.toLowerCase() || "en";
@@ -139,34 +140,16 @@ export default function Home() {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1.2rem", padding: "0 1rem 5rem", maxWidth: 1200, margin: "0 auto" }}>
-        {filtered.map(char => {
-          const charT = T.chars?.[char.id] || { tagline: "", desc: "" };
-          return (
-            <div key={char.id} onClick={() => chat.openChat(char)}
-              style={{ background: t.card, border: "0.5px solid " + t.border, borderRadius: 20, padding: "1.6rem", cursor: "pointer", position: "relative", transition: "all 0.25s" }}
-              onMouseEnter={e => { const el = e.currentTarget as HTMLDivElement; el.style.borderColor = t.accent; el.style.transform = "translateY(-4px)"; el.style.boxShadow = "0 12px 32px " + t.glow; }}
-              onMouseLeave={e => { const el = e.currentTarget as HTMLDivElement; el.style.borderColor = t.border; el.style.transform = "none"; el.style.boxShadow = "none"; }}>
-              {char.premium && (
-                <div style={{ position: "absolute", top: "1rem", right: "1rem", background: "linear-gradient(135deg, " + t.accent2 + ", " + t.premium + ")", color: isDark ? "#1a1000" : "#fff", fontSize: "0.6rem", fontWeight: 600, padding: "3px 10px", borderRadius: 10, letterSpacing: "0.08em" }}>{T.previewBadge}</div>
-              )}
-              <div style={{ width: 60, height: 60, borderRadius: "50%", background: t.bg2, border: "0.5px solid " + t.border, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.7rem", marginBottom: "1rem", overflow: "hidden" }}>
-                {char.avatar.startsWith("/") ? <img src={char.avatar} alt={char.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} /> : char.avatar}
-              </div>
-              <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "1.5rem", fontWeight: 400 }}>{char.name}</div>
-              <div style={{ color: t.text2, fontSize: "0.78rem", marginBottom: "0.5rem" }}>{char.age}</div>
-              <div style={{ fontStyle: "italic", color: t.accent, fontSize: "0.84rem", marginBottom: "0.8rem", fontFamily: "Cormorant Garamond, serif" }}>{charT.tagline}</div>
-              <div style={{ color: t.text2, fontSize: "0.8rem", lineHeight: 1.6, marginBottom: "1rem" }}>{charT.desc}</div>
-              <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: "1.2rem" }}>
-                {char.tags.map(tag => <span key={tag} style={{ background: t.surface, border: "0.5px solid " + t.border, color: t.text2, padding: "2px 9px", borderRadius: 10, fontSize: "0.7rem" }}>{tag}</span>)}
-              </div>
-              <button style={{ width: "100%", background: "transparent", border: "0.5px solid " + t.accent, color: t.accent, padding: "9px", borderRadius: 12, fontFamily: "DM Sans, sans-serif", fontSize: "0.82rem", cursor: "pointer" }}
-                onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = t.accent; el.style.color = "#fff"; }}
-                onMouseLeave={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = "transparent"; el.style.color = t.accent; }}>
-                {char.premium ? T.unlock : T.startChat}
-              </button>
-            </div>
-          );
-        })}
+        {filtered.map(char => (
+          <CharacterCard
+            key={char.id}
+            char={char}
+            t={t}
+            T={T}
+            isDark={isDark}
+            onOpen={chat.openChat}
+          />
+        ))}
       </div>
 
       {chat.chatChar && (
@@ -253,6 +236,7 @@ export default function Home() {
       )}
 
       <PremiumModal
+      
         show={chat.showPremium}
         onClose={() => chat.setShowPremium(false)}
         t={t}
