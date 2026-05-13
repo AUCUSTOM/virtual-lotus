@@ -5,6 +5,7 @@ import { THEMES, type Theme } from "../lib/themes";
 import { getSupabase } from "../lib/supabase";
 import { CHARACTERS, type Character } from "../lib/characters";
 import { TRANSLATIONS } from "../lib/translations";
+import { useAuth } from "../hooks/useAuth";
 function detectLang(): string {
   if (typeof navigator === "undefined") return "en";
   const lang = navigator.language?.toLowerCase() || "en";
@@ -36,8 +37,9 @@ export default function Home() {
   const [limitHit, setLimitHit] = useState(false);
   const [hoursLeft, setHoursLeft] = useState<number | null>(null);
   const [lang, setLang] = useState("en");
-  const [isPremium, setIsPremium] = useState(false);
-  const [user, setUser] = useState<{ id: string } | null>(null);
+  
+  const { user, isPremium, signOut } = useAuth();
+
   const [generatingImage, setGeneratingImage] = useState(false);
   const [imagesLeft, setImagesLeft] = useState(5);
   const [showImageInput, setShowImageInput] = useState(false);
@@ -56,49 +58,7 @@ export default function Home() {
     const saved = localStorage.getItem("vl-theme") as Theme;
     if (saved && THEMES[saved]) setTheme(saved);
     setLang(detectLang());
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    supabase.auth.getSession().then((result: any) => {
-  const session = result?.data?.session;
-  console.log("🔐 getSession:", session?.user?.id ?? "NO USER");
-  setUser(session?.user ?? null);
-  if (session?.user) loadProfile(session.user.id);
-});
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        setUser(session?.user ?? null);
-        if (session?.user) loadProfile(session.user.id);
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setIsPremium(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
   }, []);
-
-  async function loadProfile(userId: string) {
-    const { data } = await supabase
-      .from("profiles")
-      .select("plan_id, is_premium, subscription_status")
-      .eq("id", userId)
-      .single();
-    if (data) {
-      const active = data.plan_id === "pro_monthly" || 
-                     data.plan_id === "pro_yearly" || 
-                     data.is_premium === true;
-      setIsPremium(active);
-    }
-  }
-
-  async function signOut() {
-    await supabase.auth.signOut();
-    setUser(null);
-    setIsPremium(false);
-  }
-
   const filtered = CHARACTERS.filter(c => {
     if (filter === "all") return true;
     if (filter === "premium") return c.premium;
