@@ -51,17 +51,35 @@ export function Header({ t, T, theme, setTheme, isDark, user, signOut, onPremium
       }}
     >
       <div
-        style={{
-          fontFamily: "Cormorant Garamond, serif",
-          fontSize: "1.4rem",
-          fontWeight: 300,
-          letterSpacing: "0.12em",
-          color: t.accent,
-          flexShrink: 0,
-        }}
-      >
-        Virtual<span style={{ fontStyle: "italic", color: t.text2 }}>Lotus</span>
-      </div>
+  style={{
+    display: "flex",
+    alignItems: "center",
+    gap: "0.6rem",
+    flexShrink: 0,
+  }}
+>
+  <img
+    src="/logo-256-transparent.png"
+    alt="VirtualLotus logo"
+    width={40}
+    height={40}
+    style={{
+      display: "block",
+      flexShrink: 0,
+    }}
+  />
+  <div
+    style={{
+      fontFamily: "Cormorant Garamond, serif",
+      fontSize: "1.4rem",
+      fontWeight: 300,
+      letterSpacing: "0.12em",
+      color: t.accent,
+    }}
+  >
+    Virtual<span style={{ fontStyle: "italic", color: t.text2 }}>Lotus</span>
+  </div>
+  </div>
       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexShrink: 0 }}>
         <div
           style={{

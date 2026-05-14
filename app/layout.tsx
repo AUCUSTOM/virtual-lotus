@@ -2,9 +2,14 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://virtual-lotus.com"),
   title: "VirtualLotus — AI Companions",
   description: "Meet extraordinary AI companions with real personalities, humor, and boundaries. Available 24/7 in 50+ languages.",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/icon-192.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -17,6 +22,22 @@ export const metadata: Metadata = {
     type: "website",
     title: "VirtualLotus — AI Companions",
     description: "Real conversations. No compromise.",
+    url: "https://virtual-lotus.com",
+    siteName: "VirtualLotus",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "VirtualLotus — AI Companions",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "VirtualLotus — AI Companions",
+    description: "Real conversations. No compromise.",
+    images: ["/og-image.png"],
   },
 };
 
@@ -36,7 +57,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link rel="apple-touch-icon" href="/icon-192.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="VirtualLotus" />
