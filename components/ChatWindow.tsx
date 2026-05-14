@@ -1,6 +1,6 @@
 "use client";
 import type { Character } from "../lib/characters";
-
+import { AdModal } from "./AdModal";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ThemeColors = any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -27,9 +27,11 @@ type ImgState = {
   imagesLeft: number;
   showImageInput: boolean;
   setShowImageInput: (v: boolean) => void;
+  showAdModal: boolean;
+  setShowAdModal: (v: boolean) => void;
   imagePrompt: string;
   setImagePrompt: (v: string) => void;
-  generateImage: () => void;
+  generateImage: (watchedAd?: boolean) => void;
 };
 
 type Props = {
@@ -216,6 +218,17 @@ export function ChatWindow({ chat, img, t, T, user, isPremium, remaining }: Prop
           </div>
         )}
       </div>
+
+      {/* Ad modal — pokazuje się free userom przy próbie generowania obrazu */}
+      <AdModal
+        show={img.showAdModal}
+        t={t}
+        onWatched={() => {
+          img.setShowAdModal(false);
+          img.generateImage(true);
+        }}
+        onClose={() => img.setShowAdModal(false)}
+      />
     </div>
   );
 }
