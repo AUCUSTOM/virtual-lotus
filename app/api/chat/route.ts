@@ -115,7 +115,14 @@ async function checkIsPremium(userId: string | null): Promise<boolean> {
 
 export async function POST(req: Request) {
   try {
-    const { message, characterId, sessionId, userId } = await req.json();
+    const { message, characterId, sessionId, userId, lang } = await req.json();
+
+const languageNames: Record<string, string> = {
+  en: "English", pl: "Polish", nl: "Dutch", de: "German",
+  fr: "French", es: "Spanish", ja: "Japanese", ko: "Korean",
+  zh: "Chinese", hi: "Hindi"
+};
+const langName = languageNames[lang as string] || "English";
 
     const char = characters[characterId];
     if (!char) return NextResponse.json({ error: "Character not found" }, { status: 404 });
@@ -182,7 +189,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         model: model,
         max_tokens: 200,
-        system: char.systemPrompt,
+        system: `${char.systemPrompt}\n\nCRITICAL: Always reply in ${langName}. Even for short user messages like "hi" or "hej", reply in ${langName}. Never switch language regardless of how short the input is. Your character traits stay the same in every language.`,
         messages: history,
       }),
     });

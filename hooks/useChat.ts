@@ -59,7 +59,7 @@ export function useChat(lang: string, userId: string | null) {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, characterId: chatChar.id, sessionId, userId }),
+        body: JSON.stringify({ message: text, characterId: chatChar.id, sessionId, userId, lang }),
       });
       const data = await res.json();
 
