@@ -27,15 +27,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "not_authenticated" }, { status: 401 });
     }
 
-    // Pobierz plan użytkownika
+    // Pobierz plan i status premium
     const { data: profile } = await supabase
       .from("profiles")
-      .select("plan_id")
+      .select("plan_id, is_premium")
       .eq("id", userId)
       .single();
 
-    const planId = profile?.plan_id || "free";
-    const isFree = planId === "free";
+    const isPremium = 
+      profile?.plan_id === "pro_monthly" ||
+      profile?.plan_id === "pro_yearly" ||
+      profile?.is_premium === true;
+    const isFree = !isPremium;
 
     // Free musi obejrzeć reklamę
     if (isFree && !watchedAd) {
