@@ -46,8 +46,9 @@ export function CharacterCard({ char, t, T, isDark, onOpen }: Props) {
         <div
           style={{
             position: "absolute",
-            top: "1rem",
-            right: "1rem",
+            top: "0.8rem",
+            right: "0.8rem",
+            maxWidth: "calc(100% - 1.6rem)",
             background: "linear-gradient(135deg, " + t.accent2 + ", " + t.premium + ")",
             color: isDark ? "#1a1000" : "#fff",
             fontSize: "0.6rem",
@@ -55,6 +56,9 @@ export function CharacterCard({ char, t, T, isDark, onOpen }: Props) {
             padding: "3px 10px",
             borderRadius: 10,
             letterSpacing: "0.08em",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
           }}
         >
           {T.previewBadge}
