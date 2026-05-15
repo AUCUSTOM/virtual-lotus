@@ -4,11 +4,8 @@ import { getSupabase } from "../../../lib/supabase";
 const MODEL_FREE = "claude-haiku-4-5";
 const MODEL_PREMIUM = "claude-sonnet-4-5";
 
+// Pamięć sesji rozmów (zostaje w pamięci serwera na razie — v2 zrobimy chat_sessions w bazie)
 const sessions: Record<string, { role: string; content: string }[]> = {};
-const dailyCount: Record<string, { count: number; resetAt: number }> = {};
-
-const MAX_FREE_CHAR = 15;
-const MAX_PREMIUM_PREVIEW = 5;
 
 const characters: Record<string, { name: string; systemPrompt: string; premium: boolean }> = {
   aurora: { name: "Aurora", premium: false, systemPrompt: `You are Aurora, 26. Philosophical, poetic, a little mysterious. You think deeply but you don't lecture — you share a thought, then you're curious about theirs.
@@ -124,64 +121,93 @@ export async function POST(req: Request) {
     if (!char) return NextResponse.json({ error: "Character not found" }, { status: 404 });
 
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "local";
-    const now = Date.now();
 
-    const freeKey = ip + ":free";
-    const premiumKey = ip + ":premium:" + characterId;
+    const isPremiumUser = await checkIsPremium(userId);
+    const supabase = getSupabase();
 
-    if (char.premium) {
-      if (!dailyCount[premiumKey] || now > dailyCount[premiumKey].resetAt) {
-        dailyCount[premiumKey] = { count: 0, resetAt: now + 24 * 60 * 60 * 1000 };
-      }
-      if (dailyCount[premiumKey].count >= MAX_PREMIUM_PREVIEW) {
-        const hoursLeft = Math.ceil((dailyCount[premiumKey].resetAt - now) / (1000 * 60 * 60));
-        return NextResponse.json({ error: "daily_limit", hoursLeft, isPremiumChar: true }, { status: 429 });
-      }
-      dailyCount[premiumKey].count++;
-    } else {
-      if (!dailyCount[freeKey] || now > dailyCount[freeKey].resetAt) {
-        dailyCount[freeKey] = { count: 0, resetAt: now + 24 * 60 * 60 * 1000 };
-      }
-      if (dailyCount[freeKey].count >= MAX_FREE_CHAR) {
-        const hoursLeft = Math.ceil((dailyCount[freeKey].resetAt - now) / (1000 * 60 * 60));
-        return NextResponse.json({ error: "daily_limit", hoursLeft, isPremiumChar: false }, { status: 429 });
-      }
-      dailyCount[freeKey].count++;
+    // ===== Sprawdź limit przez Supabase RPC =====
+    const { data: limitCheck, error: limitError } = await supabase.rpc("can_send_message", {
+      p_user_id: userId || null,
+      p_ip: ip,
+      p_is_premium_user: isPremiumUser,
+      p_is_premium_char: char.premium,
+    });
+
+    if (limitError) {
+      console.error("[chat] can_send_message error:", limitError);
+      return NextResponse.json({ error: "limit_check_failed" }, { status: 500 });
     }
 
+    if (!limitCheck?.allowed) {
+      const reason = limitCheck?.reason || "limit";
+      const hoursLeft = limitCheck?.hoursLeft || 0;
+
+      // Gość próbuje premium char → modal "sign in"
+      if (reason === "sign_in_required") {
+        return NextResponse.json({ error: "sign_in_required", isPremiumChar: true }, { status: 401 });
+      }
+
+      // Free user wyczerpał preview 3/3 dla premium chars
+      if (reason === "preview_limit") {
+        return NextResponse.json({ error: "preview_limit", isPremiumChar: true }, { status: 429 });
+      }
+
+      // Gość wyczerpał 10 lifetime
+      if (reason === "guest_limit") {
+        return NextResponse.json({ error: "guest_limit", isPremiumChar: char.premium }, { status: 429 });
+      }
+
+      // Standardowy limit dzienny (free 15/day lub premium 150/day)
+      return NextResponse.json({ error: "daily_limit", hoursLeft, isPremiumChar: char.premium }, { status: 429 });
+    }
+
+    // ===== Sesja rozmowy =====
     const sid = sessionId || Math.random().toString(36).slice(2);
     if (!sessions[sid]) sessions[sid] = [];
     sessions[sid].push({ role: "user", content: message });
     const history = sessions[sid].slice(-20);
 
-    const isPremium = await checkIsPremium(userId);
-    const model = isPremium ? MODEL_PREMIUM : MODEL_FREE;
-    console.log(`[chat] userId=${userId ?? "guest"} isPremium=${isPremium} model=${model}`);
+    // ===== Model split =====
+    const model = isPremiumUser ? MODEL_PREMIUM : MODEL_FREE;
+    console.log(`[chat] userId=${userId ?? "guest"} ip=${ip} isPremium=${isPremiumUser} isPremiumChar=${char.premium} model=${model} remaining=${limitCheck?.remaining}`);
 
+    // ===== Anthropic API call =====
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-api-key": process.env.ANTHROPIC_API_KEY!,
-        "anthropic-version": "2023-06-01"
+        "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
         model: model,
         max_tokens: 200,
         system: char.systemPrompt,
-        messages: history
-      })
+        messages: history,
+      }),
     });
 
     const data = await response.json();
     const reply = data.content[0].text;
     sessions[sid].push({ role: "assistant", content: reply });
 
-    const remaining = char.premium
-      ? MAX_PREMIUM_PREVIEW - dailyCount[premiumKey].count
-      : MAX_FREE_CHAR - dailyCount[freeKey].count;
+    // ===== Inkrementuj licznik w Supabase =====
+    const { error: incError } = await supabase.rpc("increment_message_usage", {
+      p_user_id: userId || null,
+      p_ip: ip,
+      p_is_premium_char: char.premium,
+    });
 
-    return NextResponse.json({ reply, sessionId: sid, remaining });
+    if (incError) {
+      console.error("[chat] increment_message_usage error:", incError);
+      // Nie blokujemy odpowiedzi — wiadomość już poszła
+    }
+
+    return NextResponse.json({
+      reply,
+      sessionId: sid,
+      remaining: limitCheck?.remaining ?? 0,
+    });
 
   } catch (error) {
     console.error("API error:", error);
