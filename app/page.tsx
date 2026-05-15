@@ -99,7 +99,7 @@ export default function Home() {
         </h1>
         <p style={{ color: t.text2, fontSize: "0.95rem", fontWeight: 300, maxWidth: 440, margin: "0 auto 2rem", lineHeight: 1.75 }}>{T.heroDesc}</p>
         <div style={{ display: "flex", justifyContent: "center", gap: "2.5rem", flexWrap: "wrap", padding: "0 1rem" }}>
-          {[["24/7", T.availability],["100%", T.privacy],["50+", T.languages],["∞", T.patience]].map(([n,l]) => (
+          {[["24/7", T.availability],["100%", T.privacy],["∞", T.patience]].map(([n,l]) => (
             <div key={l} style={{ textAlign: "center" }}>
               <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "1.7rem", fontWeight: 400, color: t.accent }}>{n}</div>
               <div style={{ fontSize: "0.68rem", color: t.text2, letterSpacing: "0.08em", textTransform: "uppercase" }}>{l}</div>
