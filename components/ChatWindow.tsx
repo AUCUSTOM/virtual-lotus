@@ -138,7 +138,7 @@ export function ChatWindow({ chat, img, t, T, user, isPremium, remaining }: Prop
         </div>
 
         {/* Remaining counter */}
-        {remaining <= 3 && !chat.limitHit && (
+        {!isPremium && remaining <= 3 && !chat.limitHit && (
           <div style={{ textAlign: "center", fontSize: "0.72rem", color: remaining <= 1 ? t.premium : t.text2, padding: "0 1.2rem 0.4rem" }}>
             {T.remaining(remaining)} · <span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => chat.setShowPremium(true)}>{T.goPremium}</span>
           </div>
