@@ -62,13 +62,13 @@ export async function POST(req: Request) {
         "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "dall-e-3",
-        prompt: fullPrompt,
-        n: 1,
-        size: "1024x1024",
-        quality: "standard",
-      }),
-    });
+    model: "gpt-image-1-mini",
+    prompt: fullPrompt,
+    n: 1,
+    size: "1024x1024",
+    quality: "low",
+  }),
+});
 
     const data = await response.json();
 
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "generation_failed" }, { status: 500 });
     }
 
-    const imageUrl = data.data[0].url;
+    const imageUrl = `data:image/png;base64,${data.data[0].b64_json}`;
 
     // Inkrementuj licznik
     await supabase.rpc("increment_image_usage", { p_user_id: userId });
@@ -89,7 +89,7 @@ export async function POST(req: Request) {
       prompt,
       image_url: imageUrl,
       was_free: isFree,
-      cost_usd: 0.04,
+      cost_usd: 0.011,
     });
 
     const remaining = (limitData.remaining || 1) - 1;
