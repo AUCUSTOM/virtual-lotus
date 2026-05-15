@@ -1,9 +1,9 @@
 "use client";
 export const dynamic = 'force-dynamic'
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { THEMES, type Theme } from "../lib/themes";
 import { getSupabase } from "../lib/supabase";
-import { CHARACTERS, type Character } from "../lib/characters";
+import { CHARACTERS } from "../lib/characters";
 import { TRANSLATIONS } from "../lib/translations";
 import { useAuth } from "../hooks/useAuth";
 import { useChat } from "../hooks/useChat";
@@ -12,6 +12,7 @@ import { PremiumModal } from "../components/PremiumModal";
 import { CharacterCard } from "../components/CharacterCard";
 import { Header } from "../components/Header";
 import { ChatWindow } from "../components/ChatWindow";
+
 function detectLang(): string {
   if (typeof navigator === "undefined") return "en";
   const lang = navigator.language?.toLowerCase() || "en";
@@ -26,17 +27,13 @@ function detectLang(): string {
   if (lang.startsWith("hi")) return "hi";
   return "en";
 }
-type Msg = { role: "user" | "ai"; text?: string; imageUrl?: string };
-const MAX_FREE = 15;
-const MAX_PREMIUM_PREVIEW = 5;
+
 export default function Home() {
   const [theme, setTheme] = useState<Theme>("warm");
   const [filter, setFilter] = useState("all");
-  
   const [paying, setPaying] = useState(false);
-  
   const [lang, setLang] = useState("en");
-  
+
   const { user, isPremium, signOut } = useAuth();
   const chat = useChat(lang, user?.id ?? null);
   const t = THEMES[theme];
@@ -44,12 +41,12 @@ export default function Home() {
   const supabase = getSupabase();
   const img = useImageGeneration({ user, isPremium, chat, T });
 
-  
   useEffect(() => {
     const saved = localStorage.getItem("vl-theme") as Theme;
     if (saved && THEMES[saved]) setTheme(saved);
     setLang(detectLang());
   }, []);
+
   const filtered = CHARACTERS.filter(c => {
     if (filter === "all") return true;
     if (filter === "premium") return c.premium;
@@ -77,9 +74,6 @@ export default function Home() {
     }
   }
 
-  const maxForCurrent = chat.chatChar?.premium ? MAX_PREMIUM_PREVIEW : MAX_FREE;
-  const remaining = maxForCurrent - chat.msgCount;
-  
   const isDark = theme === "dark" || theme === "dusk";
 
   return (
@@ -143,11 +137,10 @@ export default function Home() {
         T={T}
         user={user}
         isPremium={isPremium}
-        remaining={remaining}
+        remaining={chat.remaining ?? 0}
       />
 
       <PremiumModal
-      
         show={chat.showPremium}
         onClose={() => chat.setShowPremium(false)}
         t={t}

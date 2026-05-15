@@ -1,28 +1,29 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import type { Character } from "../lib/characters";
-const MAX_FREE = 15;
-const MAX_PREMIUM_PREVIEW = 5;
+
 type Message = { role: "user" | "ai"; text?: string; imageUrl?: string };
+
 export function useChat(lang: string, userId: string | null) {
   const [chatChar, setChatChar] = useState<Character | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [msgCount, setMsgCount] = useState(0);
+  const [remaining, setRemaining] = useState<number | null>(null);
   const [limitHit, setLimitHit] = useState(false);
+  const [limitReason, setLimitReason] = useState<string | null>(null);
   const [hoursLeft, setHoursLeft] = useState<number | null>(null);
   const [showPremium, setShowPremium] = useState(false);
-const messagesEndRef = useRef<HTMLDivElement>(null);
-useEffect(() => {
+  const [showSignIn, setShowSignIn] = useState(false);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
-function openChat(char: Character) {
-    if (limitHit && !char.premium) {
-      setShowPremium(true);
-      return;
-    }
+
+  function openChat(char: Character) {
     setChatChar(char);
     const greetings: Record<string, string> = {
       en: "Hey! I'm",
@@ -39,22 +40,21 @@ function openChat(char: Character) {
     const g = greetings[lang] || greetings.en;
     setMessages([{ role: "ai", text: g + " " + char.name + "." }]);
     setSessionId(null);
-    setMsgCount(0);
+    setRemaining(null);
     setLimitHit(false);
+    setLimitReason(null);
+    setHoursLeft(null);
     setInput("");
   }
-async function sendMessage() {
+
+  async function sendMessage() {
     if (!input.trim() || !chatChar || loading) return;
-    const maxForChar = chatChar.premium ? MAX_PREMIUM_PREVIEW : MAX_FREE;
-    if (msgCount >= maxForChar) {
-      setLimitHit(true);
-      setShowPremium(true);
-      return;
-    }
+
     const text = input.trim();
     setInput("");
     setMessages((m) => [...m, { role: "user", text }]);
     setLoading(true);
+
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -62,14 +62,26 @@ async function sendMessage() {
         body: JSON.stringify({ message: text, characterId: chatChar.id, sessionId, userId }),
       });
       const data = await res.json();
-      if (data.error === "daily_limit") {
+
+      // Backend zwraca błąd?
+      if (data.error) {
         setLimitHit(true);
+        setLimitReason(data.error);
         setHoursLeft(data.hoursLeft ?? null);
-        setShowPremium(true);
+
+        if (data.error === "sign_in_required") {
+          // Gość kliknął premium char — pokaż sign-in modal
+          setShowSignIn(true);
+        } else {
+          // Inne limity — premium modal
+          setShowPremium(true);
+        }
         return;
       }
+
+      // Sukces — aktualizuj stan z backendu
       setSessionId(data.sessionId);
-      setMsgCount((n) => n + 1);
+      setRemaining(data.remaining ?? null);
       setMessages((m) => [...m, { role: "ai", text: data.reply }]);
     } catch {
       setMessages((m) => [...m, { role: "ai", text: "Something went wrong... try again." }]);
@@ -77,7 +89,8 @@ async function sendMessage() {
       setLoading(false);
     }
   }
-return {
+
+  return {
     chatChar,
     setChatChar,
     messages,
@@ -86,11 +99,14 @@ return {
     setInput,
     loading,
     sessionId,
-    msgCount,
+    remaining,
     limitHit,
+    limitReason,
     hoursLeft,
     showPremium,
     setShowPremium,
+    showSignIn,
+    setShowSignIn,
     messagesEndRef,
     openChat,
     sendMessage,
