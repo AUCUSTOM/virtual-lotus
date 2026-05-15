@@ -128,10 +128,11 @@ export function CharacterCard({ char, t, T, isDark, onOpen }: Props) {
         style={{
           width: "100%",
           background: "transparent",
-          border: "0.5px solid " + t.accent,
+          border: "1px solid " + t.accent,
           color: t.accent,
           padding: "9px",
           borderRadius: 12,
+          WebkitAppearance: "none",
           fontFamily: "DM Sans, sans-serif",
           fontSize: "0.82rem",
           cursor: "pointer",
