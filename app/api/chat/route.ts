@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSupabase } from "../../../lib/supabase";
+import { getSupabaseAdmin } from "../../../lib/supabase";
 
 const MODEL_FREE = "claude-haiku-4-5";
 const MODEL_PREMIUM = "claude-sonnet-4-5";
@@ -94,7 +94,7 @@ async function checkIsPremium(userId: string | null): Promise<boolean> {
   if (!userId) return false;
 
   try {
-    const supabase = getSupabase();
+    const supabase = getSupabaseAdmin();
     const { data } = await supabase
       .from("profiles")
       .select("plan_id, is_premium")
@@ -130,7 +130,7 @@ const langName = languageNames[lang as string] || "English";
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "local";
 
     const isPremiumUser = await checkIsPremium(userId);
-    const supabase = getSupabase();
+    const supabase = getSupabaseAdmin();
 
     // ===== Sprawdź limit przez Supabase RPC =====
     const { data: limitCheck, error: limitError } = await supabase.rpc("can_send_message", {

@@ -12,7 +12,12 @@ const PLANS = {
 
 export async function POST(req: Request) {
   try {
-    const { plan } = await req.json();
+    const { plan, userId } = await req.json();
+
+    if (!userId) {
+      return NextResponse.json({ error: "not_authenticated" }, { status: 401 });
+    }
+
     const priceId = PLANS[plan as keyof typeof PLANS] || PLANS.monthly;
 
     const session = await stripe.checkout.sessions.create({
@@ -22,6 +27,10 @@ export async function POST(req: Request) {
       success_url: `${req.headers.get("origin")}/?success=true`,
       cancel_url:  `${req.headers.get("origin")}/`,
       automatic_tax: { enabled: true },
+      metadata: {
+        userId,
+        plan: plan || "monthly",
+      },
     });
 
     return NextResponse.json({ url: session.url });

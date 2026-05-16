@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
 let _supabase: SupabaseClient | null = null
+let _supabaseAdmin: SupabaseClient | null = null
 
 export function getSupabase(): SupabaseClient {
   if (_supabase) return _supabase
@@ -22,6 +23,22 @@ export function getSupabase(): SupabaseClient {
   }
   _supabase = createClient(url, key)
   return _supabase
+}
+
+export function getSupabaseAdmin(): SupabaseClient {
+  if (typeof window !== 'undefined') {
+    throw new Error('getSupabaseAdmin() must NOT be called from client-side code. Use getSupabase() instead.')
+  }
+  if (_supabaseAdmin) return _supabaseAdmin
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
+  if (!url || !key) {
+    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_URL in environment.')
+  }
+  _supabaseAdmin = createClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
+  return _supabaseAdmin
 }
 
 export type Profile = {

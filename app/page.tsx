@@ -57,12 +57,16 @@ export default function Home() {
   });
 
   async function startCheckout(plan: "monthly" | "yearly") {
+    if (!user) {
+      alert("Please sign in first to subscribe.");
+      return;
+    }
     setPaying(true);
     try {
       const res = await fetch("/api/create-payment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan })
+        body: JSON.stringify({ plan, userId: user.id })
       });
       const data = await res.json();
       if (data.url) window.location.href = data.url;
