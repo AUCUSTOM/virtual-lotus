@@ -175,8 +175,12 @@ export default function Home() {
       />
 
       <footer style={{ textAlign: "center", padding: "2rem", color: t.text2, fontSize: "0.72rem", borderTop: "0.5px solid " + t.border, letterSpacing: "0.05em" }}>
-        {T.footer}
-      </footer>
+  <div style={{ marginBottom: "0.5rem" }}>
+    <a href="/terms" style={{ color: t.text2, textDecoration: "none", marginRight: "1.5rem" }}>Terms of Service</a>
+    <a href="/privacy" style={{ color: t.text2, textDecoration: "none" }}>Privacy Policy</a>
+  </div>
+  {T.footer}
+</footer>
 
       <style>{`
         @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
