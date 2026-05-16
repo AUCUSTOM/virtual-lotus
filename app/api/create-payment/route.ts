@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     const priceId = PLANS[plan as keyof typeof PLANS] || PLANS.monthly;
 
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card", "ideal", "link"],
+      payment_method_types: ["card", "link"],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
       success_url: `${req.headers.get("origin")}/?success=true`,
