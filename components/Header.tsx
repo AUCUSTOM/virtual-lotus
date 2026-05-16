@@ -21,11 +21,13 @@ type Props = {
   setTheme: (th: Theme) => void;
   isDark: boolean;
   user: { id: string } | null;
+  isPremium: boolean;
   signOut: () => void;
   onPremiumClick: () => void;
+  onManageClick: () => void;
 };
 
-export function Header({ t, T, theme, setTheme, isDark, user, signOut, onPremiumClick }: Props) {
+export function Header({ t, T, theme, setTheme, isDark, user, isPremium, signOut, onPremiumClick, onManageClick }: Props) {
   return (
     <header
       style={{
@@ -51,35 +53,35 @@ export function Header({ t, T, theme, setTheme, isDark, user, signOut, onPremium
       }}
     >
       <div
-  style={{
-    display: "flex",
-    alignItems: "center",
-    gap: "0.6rem",
-    flexShrink: 0,
-  }}
->
-  <img
-    src="/logo-256-transparent.png"
-    alt="VirtualLotus logo"
-    width={40}
-    height={40}
-    style={{
-      display: "block",
-      flexShrink: 0,
-    }}
-  />
-  <div
-    style={{
-      fontFamily: "Cormorant Garamond, serif",
-      fontSize: "1.4rem",
-      fontWeight: 300,
-      letterSpacing: "0.12em",
-      color: t.accent,
-    }}
-  >
-    Virtual<span style={{ fontStyle: "italic", color: t.text2 }}>Lotus</span>
-  </div>
-  </div>
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.6rem",
+          flexShrink: 0,
+        }}
+      >
+        <img
+          src="/logo-256-transparent.png"
+          alt="VirtualLotus logo"
+          width={40}
+          height={40}
+          style={{
+            display: "block",
+            flexShrink: 0,
+          }}
+        />
+        <div
+          style={{
+            fontFamily: "Cormorant Garamond, serif",
+            fontSize: "1.4rem",
+            fontWeight: 300,
+            letterSpacing: "0.12em",
+            color: t.accent,
+          }}
+        >
+          Virtual<span style={{ fontStyle: "italic", color: t.text2 }}>Lotus</span>
+        </div>
+      </div>
       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexShrink: 0 }}>
         <div
           style={{
@@ -148,7 +150,7 @@ export function Header({ t, T, theme, setTheme, isDark, user, signOut, onPremium
           </button>
         )}
         <button
-          onClick={onPremiumClick}
+          onClick={isPremium ? onManageClick : onPremiumClick}
           style={{
             background: "linear-gradient(135deg, " + t.accent2 + ", " + t.premium + ")",
             color: isDark ? "#1a1000" : "#fff",
@@ -163,7 +165,7 @@ export function Header({ t, T, theme, setTheme, isDark, user, signOut, onPremium
             flexShrink: 0,
           }}
         >
-          ✦ Premium
+          {isPremium ? "⚙ Manage" : "✦ Premium"}
         </button>
       </div>
     </header>

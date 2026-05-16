@@ -74,6 +74,22 @@ export default function Home() {
     }
   }
 
+  async function manageSubscription() {
+    if (!user) return;
+    try {
+      const res = await fetch("/api/customer-portal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id })
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+      else alert("Could not open portal. Please try again.");
+    } catch {
+      alert("Could not open portal. Please try again.");
+    }
+  }
+
   const isDark = theme === "dark" || theme === "dusk";
 
   return (
@@ -87,8 +103,10 @@ export default function Home() {
         setTheme={setTheme}
         isDark={isDark}
         user={user}
+        isPremium={isPremium}
         signOut={signOut}
         onPremiumClick={() => chat.setShowPremium(true)}
+        onManageClick={manageSubscription}
       />
 
       <section style={{ paddingTop: 110, paddingBottom: 48, textAlign: "center", background: "linear-gradient(180deg, " + t.bg + " 0%, " + t.bg2 + " 100%)", position: "relative", overflow: "hidden" }}>
