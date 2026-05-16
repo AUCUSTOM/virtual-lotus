@@ -35,16 +35,17 @@ export async function POST(req: Request) {
 
         if (userId) {
           await supabase
-            .from("profiles")
-            .update({
-              stripe_customer_id: customerId,
-              stripe_subscription_id: subscriptionId,
-              subscription_status: "active",
-              is_premium: true,
-              plan_id: session.metadata?.plan === "yearly" ? "pro_yearly" : "pro_monthly",
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", userId);
+  .from("profiles")
+  .upsert({
+    id: userId,
+    stripe_customer_id: customerId,
+    stripe_subscription_id: subscriptionId,
+    subscription_status: "active",
+    is_premium: true,
+    plan_id: session.metadata?.plan === "yearly" ? "pro_yearly" : "pro_monthly",
+    updated_at: new Date().toISOString(),
+  })
+  .eq("id", userId);
         }
         break;
       }
