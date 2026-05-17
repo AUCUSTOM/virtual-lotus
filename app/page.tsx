@@ -9,6 +9,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useChat } from "../hooks/useChat";
 import { useImageGeneration } from "../hooks/useImageGeneration";
 import { PremiumModal } from "../components/PremiumModal";
+import { SignInModal } from "../components/SignInModal";
 import { CharacterCard } from "../components/CharacterCard";
 import { Header } from "../components/Header";
 import { ChatWindow } from "../components/ChatWindow";
@@ -173,7 +174,12 @@ export default function Home() {
         limitHit={chat.limitHit}
         hoursLeft={chat.hoursLeft}
       />
-
+<SignInModal
+        show={chat.showSignIn}
+        onClose={() => chat.setShowSignIn(false)}
+        t={t}
+        isDark={isDark}
+      />
       <footer style={{ textAlign: "center", padding: "2rem", color: t.text2, fontSize: "0.72rem", borderTop: "0.5px solid " + t.border, letterSpacing: "0.05em" }}>
   <div style={{ marginBottom: "0.5rem" }}>
     <a href="/terms" style={{ color: t.text2, textDecoration: "none", marginRight: "1.5rem" }}>Terms of Service</a>

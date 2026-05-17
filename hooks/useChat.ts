@@ -49,6 +49,12 @@ export function useChat(lang: string, userId: string | null) {
   }
 
   async function openChat(char: Character) {
+    // Gość próbuje premium chara → pokaż modal logowania, nie otwieraj czatu
+    if (!userId && char.premium) {
+      setShowSignIn(true);
+      return;
+    }
+
     setChatChar(char);
     setInput("");
     setRemaining(null);
