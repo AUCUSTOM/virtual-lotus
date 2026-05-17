@@ -4,7 +4,7 @@ import { getSupabaseAdmin } from "../../../lib/supabase";
 const MODEL_FREE = "claude-haiku-4-5";
 const MODEL_PREMIUM = "claude-sonnet-4-5";
 
-// Pamięć sesji rozmów (zostaje w pamięci serwera na razie — v2 zrobimy chat_sessions w bazie)
+// Pamięć sesji rozmów — tylko dla free/gości (premium ma persistent storage w Supabase)
 const sessions: Record<string, { role: string; content: string }[]> = {};
 
 const characters: Record<string, { name: string; systemPrompt: string; premium: boolean }> = {
@@ -113,16 +113,88 @@ async function checkIsPremium(userId: string | null): Promise<boolean> {
   }
 }
 
+// ===== Helpers dla historii czatów premium =====
+
+async function getOrCreateSession(userId: string, characterId: string): Promise<string> {
+  const supabase = getSupabaseAdmin();
+
+  // Spróbuj znaleźć istniejącą sesję
+  const { data: existing } = await supabase
+    .from("chat_sessions")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("character_id", characterId)
+    .maybeSingle();
+
+  if (existing) return existing.id;
+
+  // Utwórz nową
+  const { data: created, error } = await supabase
+    .from("chat_sessions")
+    .insert({ user_id: userId, character_id: characterId })
+    .select("id")
+    .single();
+
+  if (error || !created) {
+    console.error("[chat] getOrCreateSession error:", error);
+    throw new Error("Failed to create session");
+  }
+
+  return created.id;
+}
+
+async function loadHistory(sessionId: string): Promise<{ role: string; content: string }[]> {
+  const supabase = getSupabaseAdmin();
+
+  const { data, error } = await supabase
+    .from("messages")
+    .select("role, content")
+    .eq("session_id", sessionId)
+    .order("created_at", { ascending: true })
+    .limit(20);
+
+  if (error) {
+    console.error("[chat] loadHistory error:", error);
+    return [];
+  }
+
+  return data || [];
+}
+
+async function saveMessages(
+  sessionId: string,
+  userMessage: string,
+  assistantReply: string
+): Promise<void> {
+  const supabase = getSupabaseAdmin();
+
+  const { error: insertError } = await supabase.from("messages").insert([
+    { session_id: sessionId, role: "user", content: userMessage },
+    { session_id: sessionId, role: "assistant", content: assistantReply },
+  ]);
+
+  if (insertError) {
+    console.error("[chat] saveMessages insert error:", insertError);
+    return;
+  }
+
+  // Update last_message_at na sesji
+  await supabase
+    .from("chat_sessions")
+    .update({ last_message_at: new Date().toISOString() })
+    .eq("id", sessionId);
+}
+
 export async function POST(req: Request) {
   try {
     const { message, characterId, sessionId, userId, lang } = await req.json();
 
-const languageNames: Record<string, string> = {
-  en: "English", pl: "Polish", nl: "Dutch", de: "German",
-  fr: "French", es: "Spanish", ja: "Japanese", ko: "Korean",
-  zh: "Chinese", hi: "Hindi"
-};
-const langName = languageNames[lang as string] || "English";
+    const languageNames: Record<string, string> = {
+      en: "English", pl: "Polish", nl: "Dutch", de: "German",
+      fr: "French", es: "Spanish", ja: "Japanese", ko: "Korean",
+      zh: "Chinese", hi: "Hindi"
+    };
+    const langName = languageNames[lang as string] || "English";
 
     const char = characters[characterId];
     if (!char) return NextResponse.json({ error: "Character not found" }, { status: 404 });
@@ -169,14 +241,34 @@ const langName = languageNames[lang as string] || "English";
     }
 
     // ===== Sesja rozmowy =====
+    // Premium → load z Supabase (cross-device, persistent)
+    // Free/gość → in-memory (znika przy refresh, nic do bazy)
+    let history: { role: string; content: string }[] = [];
+    let dbSessionId: string | null = null;
     const sid = sessionId || Math.random().toString(36).slice(2);
-    if (!sessions[sid]) sessions[sid] = [];
-    sessions[sid].push({ role: "user", content: message });
-    const history = sessions[sid].slice(-20);
+
+    if (isPremiumUser && userId) {
+      try {
+        dbSessionId = await getOrCreateSession(userId, characterId);
+        const dbHistory = await loadHistory(dbSessionId);
+        history = [...dbHistory, { role: "user", content: message }];
+      } catch (err) {
+        console.error("[chat] history load failed, falling back to in-memory:", err);
+        // Fallback — gdyby coś padło z bazą, nie blokujemy rozmowy
+        if (!sessions[sid]) sessions[sid] = [];
+        sessions[sid].push({ role: "user", content: message });
+        history = sessions[sid].slice(-20);
+      }
+    } else {
+      // Free / gość — in-memory jak było
+      if (!sessions[sid]) sessions[sid] = [];
+      sessions[sid].push({ role: "user", content: message });
+      history = sessions[sid].slice(-20);
+    }
 
     // ===== Model split =====
     const model = isPremiumUser ? MODEL_PREMIUM : MODEL_FREE;
-    console.log(`[chat] userId=${userId ?? "guest"} ip=${ip} isPremium=${isPremiumUser} isPremiumChar=${char.premium} model=${model} remaining=${limitCheck?.remaining}`);
+    console.log(`[chat] userId=${userId ?? "guest"} ip=${ip} isPremium=${isPremiumUser} isPremiumChar=${char.premium} model=${model} remaining=${limitCheck?.remaining} historyLen=${history.length}`);
 
     // ===== Anthropic API call =====
     const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -196,7 +288,14 @@ const langName = languageNames[lang as string] || "English";
 
     const data = await response.json();
     const reply = data.content[0].text;
-    sessions[sid].push({ role: "assistant", content: reply });
+
+    // Zapis historii — premium do bazy, free/gość do pamięci serwera
+    if (isPremiumUser && userId && dbSessionId) {
+      await saveMessages(dbSessionId, message, reply);
+    } else {
+      if (!sessions[sid]) sessions[sid] = [];
+      sessions[sid].push({ role: "assistant", content: reply });
+    }
 
     // ===== Inkrementuj licznik w Supabase =====
     const { error: incError } = await supabase.rpc("increment_message_usage", {
