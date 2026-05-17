@@ -14,7 +14,7 @@ export default function TermsOfService() {
 
       <main style={{ maxWidth: 720, margin: "0 auto", padding: "2rem 1.5rem 4rem", lineHeight: 1.8, fontSize: "0.92rem" }}>
         <h1 style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "2rem", fontWeight: 400, marginBottom: "0.5rem" }}>Terms of Service</h1>
-        <p style={{ color: "#666", fontSize: "0.82rem", marginBottom: "2rem" }}>Last updated: May 16, 2026</p>
+        <p style={{ color: "#666", fontSize: "0.82rem", marginBottom: "2rem" }}>Last updated: May 17, 2026</p>
 
         <p><strong>Operated by:</strong> AUCUSTOM, Nederhorst 54, 7608 JX Almelo, Netherlands<br />
         <strong>KvK:</strong> 95187111<br />
@@ -70,6 +70,7 @@ export default function TermsOfService() {
 
         <h2 style={h2}>4. Eligibility</h2>
         <p>You must be at least <strong>16 years old</strong> to use VirtualLotus. By creating an account, you confirm that you meet this requirement.</p>
+        <p>If you are under 18, please ensure you have appropriate adult support if discussing difficult topics. VirtualLotus is not a substitute for parental, guardian, or professional support.</p>
 
         <h2 style={h2}>5. Your Account</h2>
         <p>You create an account using a magic link sent to your email. You are responsible for maintaining access to your email account. You may not share your account with others. We may suspend or terminate accounts that violate these Terms.</p>
@@ -91,13 +92,19 @@ export default function TermsOfService() {
         <p>Access to free AI characters with daily message limits. Limited preview access to premium characters. Image generation with ad viewing requirement.</p>
 
         <h3 style={h3}>7.2 Premium Subscription (VirtualLotus Pro)</h3>
-        <p>Access to all AI characters. Higher daily message limits. Image generation without ads. Monthly or yearly subscription.</p>
+        <p>Premium includes:</p>
+        <p>— Access to all AI characters<br />
+        — Higher daily message limits<br />
+        — Image generation without ads<br />
+        — <strong>Chat history (memory)</strong> — your conversations with AI characters are saved and restored when you return. You may delete your chat history at any time using the in-app &quot;Clear history&quot; function. See <a href="/privacy" style={link}>Privacy Policy</a> (Section 3.4 and Section 7.2) for data processing and retention details.</p>
+        <p>Monthly or yearly subscription.</p>
 
         <h3 style={h3}>7.3 Payment Processing</h3>
         <p>All payments are processed by <strong>Stripe</strong>. We do not store credit card details. Prices are in EUR and include applicable taxes. Subscriptions renew automatically until cancelled.</p>
 
         <h3 style={h3}>7.4 Cancellation</h3>
         <p>You can cancel anytime via the Customer Portal. You keep premium access until the end of the billing period. No refunds for partial periods unless required by Dutch/EU law.</p>
+        <p>After cancellation, your Premium chat history is retained for <strong>30 days</strong> (grace period). If you re-subscribe within that period, your history remains available. After 30 days, it is permanently deleted.</p>
 
         <h3 style={h3}>7.5 Price Changes</h3>
         <p>We may change prices with 30 days notice. Changes do not affect your current billing period.</p>
@@ -109,7 +116,7 @@ export default function TermsOfService() {
         <p>The VirtualLotus name, logo, character designs, and website design belong to AUCUSTOM. You retain ownership of the messages you write. AI-generated responses and images are licensed to you for personal use.</p>
 
         <h2 style={h2}>10. Privacy</h2>
-        <p>We take your privacy seriously. Please read our <a href="/privacy" style={link}>Privacy Policy</a> for details on how we collect, use, and protect your data.</p>
+        <p>We take your privacy seriously. Please read our <a href="/privacy" style={link}>Privacy Policy</a> for details on how we collect, use, and protect your data. The Privacy Policy forms an integral part of these Terms.</p>
 
         <h2 style={h2}>11. Availability</h2>
         <p>We aim for 24/7 availability but do not guarantee uptime. We may suspend the Service for maintenance, updates, or security reasons. We are not liable for downtime or service interruptions.</p>
