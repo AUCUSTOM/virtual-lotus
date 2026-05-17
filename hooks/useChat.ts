@@ -4,7 +4,6 @@ import type { Character } from "../lib/characters";
 
 type Message = { role: "user" | "ai"; text?: string; imageUrl?: string };
 
-// Mapowanie z bazy (role: "user" | "assistant") na frontend (role: "user" | "ai")
 function dbMessageToUiMessage(m: { role: string; content: string }): Message {
   return {
     role: m.role === "assistant" ? "ai" : "user",
@@ -32,14 +31,7 @@ export function useChat(lang: string, userId: string | null) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  async function openChat(char: Character) {
-    setChatChar(char);
-    setInput("");
-    setRemaining(null);
-    setLimitHit(false);
-    setLimitReason(null);
-    setHoursLeft(null);
-
+  function getGreetingMessage(char: Character): Message {
     const greetings: Record<string, string> = {
       en: "Hey! I'm",
       pl: "Hej! Jestem",
@@ -53,18 +45,27 @@ export function useChat(lang: string, userId: string | null) {
       hi: "नमस्ते! मैं हूँ",
     };
     const g = greetings[lang] || greetings.en;
-    const greetingMsg: Message = { role: "ai", text: g + " " + char.name + "." };
+    return { role: "ai", text: g + " " + char.name + "." };
+  }
 
-    // Bez usera → free/gość → standardowe powitanie, bez historii
+  async function openChat(char: Character) {
+    setChatChar(char);
+    setInput("");
+    setRemaining(null);
+    setLimitHit(false);
+    setLimitReason(null);
+    setHoursLeft(null);
+
+    const greetingMsg = getGreetingMessage(char);
+
     if (!userId) {
       setMessages([greetingMsg]);
       setSessionId(null);
       return;
     }
 
-    // Spróbuj załadować historię (backend sam sprawdzi czy premium)
     setLoadingHistory(true);
-    setMessages([]); // czyste tło na czas ładowania (spinner się pokaże w UI)
+    setMessages([]);
 
     try {
       const res = await fetch("/api/chat/history", {
@@ -75,21 +76,41 @@ export function useChat(lang: string, userId: string | null) {
       const data = await res.json();
 
       if (data.messages && data.messages.length > 0) {
-        // Premium z historią — pokaż wiadomości, bez powitania
         setMessages(data.messages.map(dbMessageToUiMessage));
         setSessionId(data.sessionId);
       } else {
-        // Free albo premium bez historii — standardowe powitanie
         setMessages([greetingMsg]);
         setSessionId(null);
       }
     } catch (err) {
       console.error("[useChat] history load failed:", err);
-      // Fallback — pokaż powitanie jak gdyby nic
       setMessages([greetingMsg]);
       setSessionId(null);
     } finally {
       setLoadingHistory(false);
+    }
+  }
+
+  async function clearHistory() {
+    if (!chatChar || !userId) return false;
+
+    try {
+      const res = await fetch("/api/chat/clear", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, characterId: chatChar.id }),
+      });
+      const data = await res.json();
+
+      if (data.ok) {
+        setMessages([getGreetingMessage(chatChar)]);
+        setSessionId(null);
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error("[useChat] clearHistory failed:", err);
+      return false;
     }
   }
 
@@ -153,5 +174,6 @@ export function useChat(lang: string, userId: string | null) {
     messagesEndRef,
     openChat,
     sendMessage,
+    clearHistory,
   };
 }

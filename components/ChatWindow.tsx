@@ -21,6 +21,7 @@ type ChatState = {
   setShowPremium: (v: boolean) => void;
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   sendMessage: () => void;
+  clearHistory: () => Promise<boolean>;
 };
 
 type ImgState = {
@@ -47,6 +48,14 @@ type Props = {
 
 export function ChatWindow({ chat, img, t, T, user, isPremium, remaining }: Props) {
   if (!chat.chatChar) return null;
+
+  async function handleClearHistory() {
+    const confirmed = window.confirm(
+      "Are you sure you want to clear your chat history with this character? This cannot be undone."
+    );
+    if (!confirmed) return;
+    await chat.clearHistory();
+  }
 
   return (
     <div
@@ -79,7 +88,6 @@ export function ChatWindow({ chat, img, t, T, user, isPremium, remaining }: Prop
           overflow: "hidden",
         }}
       >
-        {/* Header */}
         <div style={{ padding: "1.2rem 1.5rem", borderBottom: "0.5px solid " + t.border, display: "flex", alignItems: "center", gap: "1rem" }}>
           <div style={{ width: 46, height: 46, borderRadius: "50%", background: t.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", overflow: "hidden" }}>
             {chat.chatChar.avatar.startsWith("/") ? (
@@ -92,6 +100,17 @@ export function ChatWindow({ chat, img, t, T, user, isPremium, remaining }: Prop
             <div style={{ fontFamily: "Cormorant Garamond, serif", fontSize: "1.2rem" }}>{chat.chatChar.name}</div>
             <div style={{ fontSize: "0.72rem", color: t.accent }}>{T.online}</div>
           </div>
+
+          {isPremium && (
+            <button
+              onClick={handleClearHistory}
+              title="Clear chat history"
+              style={{ background: t.surface, border: "0.5px solid " + t.border, color: t.text2, width: 34, height: 34, borderRadius: "50%", cursor: "pointer", fontSize: "0.85rem" }}
+            >
+              🗑️
+            </button>
+          )}
+
           <button
             onClick={() => chat.setChatChar(null)}
             style={{ background: t.surface, border: "0.5px solid " + t.border, color: t.text2, width: 34, height: 34, borderRadius: "50%", cursor: "pointer", fontSize: "0.9rem" }}
@@ -100,7 +119,6 @@ export function ChatWindow({ chat, img, t, T, user, isPremium, remaining }: Prop
           </button>
         </div>
 
-        {/* Messages */}
         <div style={{ flex: 1, overflowY: "auto", padding: "1.2rem", display: "flex", flexDirection: "column", gap: "0.8rem" }}>
           {chat.messages.map((msg, i) => (
             <div key={i} style={{ maxWidth: "80%", alignSelf: msg.role === "ai" ? "flex-start" : "flex-end" }}>
@@ -138,14 +156,12 @@ export function ChatWindow({ chat, img, t, T, user, isPremium, remaining }: Prop
           <div ref={chat.messagesEndRef} />
         </div>
 
-        {/* Remaining counter */}
         {!isPremium && remaining <= 3 && !chat.limitHit && (
           <div style={{ textAlign: "center", fontSize: "0.72rem", color: remaining <= 1 ? t.premium : t.text2, padding: "0 1.2rem 0.4rem" }}>
             {T.remaining(remaining)} · <span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => chat.setShowPremium(true)}>{T.goPremium}</span>
           </div>
         )}
 
-        {/* Image prompt input */}
         {img.showImageInput && user && (
           <div style={{ padding: "0.8rem 1.2rem", borderTop: "0.5px solid " + t.border, display: "flex", gap: "0.7rem", background: t.surface }}>
             <input
@@ -169,7 +185,6 @@ export function ChatWindow({ chat, img, t, T, user, isPremium, remaining }: Prop
           </div>
         )}
 
-        {/* Text input */}
         <div style={{ padding: "0.9rem 1.2rem", borderTop: "0.5px solid " + t.border, display: "flex", gap: "0.7rem", alignItems: "flex-end" }}>
           {user && (
             <button
@@ -212,7 +227,6 @@ export function ChatWindow({ chat, img, t, T, user, isPremium, remaining }: Prop
           </button>
         </div>
 
-        {/* Images left counter */}
         {isPremium && (
           <div style={{ textAlign: "center", fontSize: "0.68rem", color: t.text2, padding: "0 1.2rem 0.6rem" }}>
             🎨 {T.imagesLeft(img.imagesLeft)}
@@ -220,7 +234,6 @@ export function ChatWindow({ chat, img, t, T, user, isPremium, remaining }: Prop
         )}
       </div>
 
-      {/* Ad modal — pokazuje się free userom przy próbie generowania obrazu */}
       <AdModal
         show={img.showAdModal}
         t={t}
