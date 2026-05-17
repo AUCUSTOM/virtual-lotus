@@ -156,12 +156,6 @@ export function ChatWindow({ chat, img, t, T, user, isPremium, remaining }: Prop
           <div ref={chat.messagesEndRef} />
         </div>
 
-        {!isPremium && remaining <= 3 && !chat.limitHit && (
-          <div style={{ textAlign: "center", fontSize: "0.72rem", color: remaining <= 1 ? t.premium : t.text2, padding: "0 1.2rem 0.4rem" }}>
-            {T.remaining(remaining)} · <span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => chat.setShowPremium(true)}>{T.goPremium}</span>
-          </div>
-        )}
-
         {img.showImageInput && user && (
           <div style={{ padding: "0.8rem 1.2rem", borderTop: "0.5px solid " + t.border, display: "flex", gap: "0.7rem", background: t.surface }}>
             <input
