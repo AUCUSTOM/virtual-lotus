@@ -4,11 +4,20 @@ import type { Character } from "../lib/characters";
 
 type Message = { role: "user" | "ai"; text?: string; imageUrl?: string };
 
+// Mapowanie z bazy (role: "user" | "assistant") na frontend (role: "user" | "ai")
+function dbMessageToUiMessage(m: { role: string; content: string }): Message {
+  return {
+    role: m.role === "assistant" ? "ai" : "user",
+    text: m.content,
+  };
+}
+
 export function useChat(lang: string, userId: string | null) {
   const [chatChar, setChatChar] = useState<Character | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [remaining, setRemaining] = useState<number | null>(null);
   const [limitHit, setLimitHit] = useState(false);
@@ -23,8 +32,14 @@ export function useChat(lang: string, userId: string | null) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  function openChat(char: Character) {
+  async function openChat(char: Character) {
     setChatChar(char);
+    setInput("");
+    setRemaining(null);
+    setLimitHit(false);
+    setLimitReason(null);
+    setHoursLeft(null);
+
     const greetings: Record<string, string> = {
       en: "Hey! I'm",
       pl: "Hej! Jestem",
@@ -38,13 +53,44 @@ export function useChat(lang: string, userId: string | null) {
       hi: "नमस्ते! मैं हूँ",
     };
     const g = greetings[lang] || greetings.en;
-    setMessages([{ role: "ai", text: g + " " + char.name + "." }]);
-    setSessionId(null);
-    setRemaining(null);
-    setLimitHit(false);
-    setLimitReason(null);
-    setHoursLeft(null);
-    setInput("");
+    const greetingMsg: Message = { role: "ai", text: g + " " + char.name + "." };
+
+    // Bez usera → free/gość → standardowe powitanie, bez historii
+    if (!userId) {
+      setMessages([greetingMsg]);
+      setSessionId(null);
+      return;
+    }
+
+    // Spróbuj załadować historię (backend sam sprawdzi czy premium)
+    setLoadingHistory(true);
+    setMessages([]); // czyste tło na czas ładowania (spinner się pokaże w UI)
+
+    try {
+      const res = await fetch("/api/chat/history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, characterId: char.id }),
+      });
+      const data = await res.json();
+
+      if (data.messages && data.messages.length > 0) {
+        // Premium z historią — pokaż wiadomości, bez powitania
+        setMessages(data.messages.map(dbMessageToUiMessage));
+        setSessionId(data.sessionId);
+      } else {
+        // Free albo premium bez historii — standardowe powitanie
+        setMessages([greetingMsg]);
+        setSessionId(null);
+      }
+    } catch (err) {
+      console.error("[useChat] history load failed:", err);
+      // Fallback — pokaż powitanie jak gdyby nic
+      setMessages([greetingMsg]);
+      setSessionId(null);
+    } finally {
+      setLoadingHistory(false);
+    }
   }
 
   async function sendMessage() {
@@ -63,23 +109,19 @@ export function useChat(lang: string, userId: string | null) {
       });
       const data = await res.json();
 
-      // Backend zwraca błąd?
       if (data.error) {
         setLimitHit(true);
         setLimitReason(data.error);
         setHoursLeft(data.hoursLeft ?? null);
 
         if (data.error === "sign_in_required") {
-          // Gość kliknął premium char — pokaż sign-in modal
           setShowSignIn(true);
         } else {
-          // Inne limity — premium modal
           setShowPremium(true);
         }
         return;
       }
 
-      // Sukces — aktualizuj stan z backendu
       setSessionId(data.sessionId);
       setRemaining(data.remaining ?? null);
       setMessages((m) => [...m, { role: "ai", text: data.reply }]);
@@ -98,6 +140,7 @@ export function useChat(lang: string, userId: string | null) {
     input,
     setInput,
     loading,
+    loadingHistory,
     sessionId,
     remaining,
     limitHit,

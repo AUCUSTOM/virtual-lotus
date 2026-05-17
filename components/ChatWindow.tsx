@@ -15,6 +15,7 @@ type ChatState = {
   input: string;
   setInput: (v: string) => void;
   loading: boolean;
+  loadingHistory: boolean;
   limitHit: boolean;
   hoursLeft: number | null;
   setShowPremium: (v: boolean) => void;
@@ -122,8 +123,8 @@ export function ChatWindow({ chat, img, t, T, user, isPremium, remaining }: Prop
               )}
             </div>
           ))}
-          {(chat.loading || img.generatingImage) && (
-            <div style={{ display: "flex", gap: 4, padding: "0.75rem 1rem", background: t.card, border: "0.5px solid " + t.border, borderRadius: "16px 16px 16px 4px", alignSelf: "flex-start" }}>
+          {(chat.loading || img.generatingImage || chat.loadingHistory) && (
+            <div style={{ display: "flex", gap: 4, padding: "0.75rem 1rem", background: t.card, border: "0.5px solid " + t.border, borderRadius: "16px 16px 16px 4px", alignSelf: chat.loadingHistory ? "center" : "flex-start" }}>
               {[0, 0.2, 0.4].map((d, i) => (
                 <div key={i} style={{ width: 6, height: 6, background: t.text2, borderRadius: "50%", animation: "bounce 1.2s " + d + "s infinite" }} />
               ))}
