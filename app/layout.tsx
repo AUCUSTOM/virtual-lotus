@@ -2,12 +2,9 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.virtual-lotus.com"),
+  metadataBase: new URL("https://virtual-lotus.com"),
   title: "VirtualLotus — AI Companions",
-  description: "A safe space to talk. AI companions who listen without judgment. Available 24/7, in your language.",
-  alternates: {
-    canonical: "/",
-  },
+  description: "Meet extraordinary AI companions with real personalities, humor, and boundaries. Available 24/7 in 50+ languages.",
   manifest: "/manifest.json",
   icons: {
     icon: "/favicon.ico",
@@ -25,7 +22,7 @@ export const metadata: Metadata = {
     type: "website",
     title: "VirtualLotus — AI Companions",
     description: "Real conversations. No compromise.",
-    url: "https://www.virtual-lotus.com",
+    url: "https://virtual-lotus.com",
     siteName: "VirtualLotus",
     images: [
       {
