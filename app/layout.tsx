@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL("https://virtual-lotus.com"),
   title: "VirtualLotus — AI Companions",
-  description: "Meet extraordinary AI companions with real personalities, humor, and boundaries. Available 24/7 in 50+ languages.",
+  description: "Meet extraordinary AI companions with real personalities, humor, and boundaries. Available 24/7 in multiple languages.",
   manifest: "/manifest.json",
   icons: {
     icon: "/favicon.ico",
